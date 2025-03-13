@@ -7,6 +7,16 @@ import pageRoutes from './routes/pages.js';
 import postRoutes from './routes/posts.js';
 import authRoutes from './routes/auth.js';
 import technologyRoutes from "./routes/technologyRoutes.js"
+import  aiPageRoutes from "./routes/aiPageRoutes.js"
+import clientRoutes from "./routes/clientRoutes.js";
+import knowledgePartnerRoutes from "./routes/knowledgePartnerRoutes.js"
+import comparisonRoutes from "./routes/comparisonRoutes.js"
+import counterRoutes from "./routes/counterRoutes.js"
+import stepByStepRoutes from "./routes/stepByStepRoutes.js";
+import animatedTextRoutes from "./routes/animatedTextRoutes.js"
+import imageComparisonRoutes from "./routes/imageComparisonRoutes.js"
+import footerRoutes from "./routes/footerRoutes.js"
+
 
 // Initialize Express app
 const app = express();
@@ -28,6 +38,16 @@ app.use('/api/pages', pageRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/technology", technologyRoutes);
+app.use("/api/ai-pages", aiPageRoutes);
+app.use("/api/clients", clientRoutes);
+app.use("/api/knowledge-partners", knowledgePartnerRoutes);
+app.use("/api/comparison", comparisonRoutes);
+app.use("/api/counter", counterRoutes);
+app.use("/api/step-by-step", stepByStepRoutes);
+app.use("/api/animated-text", animatedTextRoutes);
+app.use("/api/image-comparison", imageComparisonRoutes);
+app.use("/api/footer", footerRoutes);
+
 
 // Define port
 const PORT = process.env.PORT || 5000;
