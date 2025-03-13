@@ -1,1 +1,7 @@
 node_modules
+# Ignore node_modules and build artifacts
+node_modules/
+*.log
+.env
+dist/
+build/
