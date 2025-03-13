@@ -1,7 +1,11 @@
-node_modules
 # Ignore node_modules and build artifacts
 node_modules/
 *.log
+npm-debug.log*
 .env
 dist/
 build/
+
+# IDE files
+.vscode/
+.idea/
