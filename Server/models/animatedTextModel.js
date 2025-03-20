@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const textItemSchema = new mongoose.Schema({
-  text: { type: String, required: true }, // e.g., "Faster Discharges = Higher Bed Turnover ⏩"
-  icon: { type: String, required: true }, // e.g., "FaRobot"
+  text: { type: String  }, // e.g., "Faster Discharges = Higher Bed Turnover ⏩"
+  icon: { type: String}, // e.g., "FaRobot"
 });
 
 const animatedTextSchema = new mongoose.Schema({

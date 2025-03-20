@@ -6,20 +6,27 @@ const initSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: ['http://localhost:3000', 'http://localhost:3001'], // Adjust based on your frontend port
-      methods: ['GET', 'POST'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
       credentials: true,
     },
   });
 
   io.on('connection', (socket) => {
-    console.log('Client connected');
-    socket.on('disconnect', () => console.log('Client disconnected'));
+    console.log('Client connected:', socket.id);
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
+    });
   });
 };
 
-const notifyClients = () => {
+const notifyClients = (event, data) => {
   if (io) {
-    io.emit('contentUpdated'); // Emit event to all connected clients
+    // console.log(`Emitting event: ${event}`, data); // Debug log
+    io.emit(event, data); // Emit the specified event with data
+  } else {
+    console.error("Socket.IO not initialized");
   }
 };
 

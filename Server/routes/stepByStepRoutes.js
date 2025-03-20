@@ -1,11 +1,20 @@
-// backend/routes/stepByStepRoutes.js
 import express from "express";
-import { getStepByStep, updateStepByStep } from "../controllers/stepByStepController.js";
-import  authenticateToken  from "../middleware/auth.js"; // Assuming you have this
+import { 
+  getStepByStep, 
+  createStepByStep, 
+  updateStepByStep, 
+  deleteStepByStep 
+} from "../controllers/stepByStepController.js";
+import authenticateToken from "../middleware/auth.js";
 
 const router = express.Router();
 
+// Public Route
 router.get("/", getStepByStep);
-router.put("/", authenticateToken, updateStepByStep);
+
+// Protected Routes (Require Authentication)
+router.post("/", authenticateToken, createStepByStep);
+router.put("/", authenticateToken, updateStepByStep); // Changed from /:id to /
+router.delete("/", authenticateToken, deleteStepByStep); // Changed from /:id to /
 
 export default router;

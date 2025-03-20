@@ -1,19 +1,39 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const cardSchema = new mongoose.Schema({
-  icon: { type: String }, // Optional Icon
-  title: { type: String }, // Optional Title
-  description: { type: String }, // Optional Description
+  icon: { type: String },
+  color: { type: String },
+  title: { type: String },
+  description: { type: String },
 });
 
-const aiPageSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true, unique: true }, // Required Page Title
-    description: { type: String, required: true }, // Required Page Description
-    slug: { type: String, required: true, unique: true, lowercase: true, trim: true }, // URL Slug
-    cards: [cardSchema], // Array of Multiple Cards
+const sectionSchema = new mongoose.Schema({
+  cardType: { 
+    type: String,
+    enum: ['highlight', 'motion'], 
+    default: 'highlight'
   },
-  { timestamps: true } // Auto-createdAt & updatedAt
-);
+  cards: [cardSchema],
+});
 
-export default mongoose.model("AIPage", aiPageSchema);
+const aiPageSchema = new mongoose.Schema({
+  title: { type: String, required: true, unique: true },
+  titleColor: { type: String, default: '#000000' }, // Fixed field
+  description: { type: String, required: true },
+  slug: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true, 
+    trim: true 
+  },
+  sections: [sectionSchema],
+  updatedAt: { type: Date, default: Date.now },
+});
+
+aiPageSchema.pre('save', function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+export default mongoose.model('AIPage', aiPageSchema);

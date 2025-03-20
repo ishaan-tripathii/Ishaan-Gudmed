@@ -1,53 +1,103 @@
 import Footer from "../models/footerModel.js";
 import { notifyClients } from "../services/socket.js";
 
+// Get Footer Data
 export const getFooter = async (req, res) => {
   try {
     const data = await Footer.findOne();
+
     if (!data) {
-      const newData = new Footer({
-        copyright: {
-          year: 2025,
-          companyName: "Gud Medicare Solutions Private Limited",
-          rightsReserved: "All rights reserved ®",
-        },
-        contact: {
-          phone: "+91-9999196828",
-          email: "cs@gudmed.in",
-        },
-        socialIcons: [
-          { iconClass: "fab fa-whatsapp", link: "https://wa.me/919999196828" },
-          { iconClass: "fab fa-facebook-f", link: "https://www.facebook.com/GudMedicare/" },
-          { iconClass: "fab fa-twitter", link: "https://x.com/GudMedicare" },
-          { iconClass: "fab fa-instagram", link: "https://www.instagram.com/gudmedicare/" },
-          { iconClass: "fab fa-youtube", link: "https://www.youtube.com/channel/UC2qkjYWuIsmEuQ5dnMV3l9Q" },
-          { iconClass: "fab fa-linkedin", link: "https://www.linkedin.com/company/gudmed/" },
-        ],
-        logoUrl: "http://localhost:5000/images/gudmed-logo.png",
+      return res.status(404).json({
+        success: false,
+        message: "Footer data not found"
       });
-      await newData.save();
-      return res.status(200).json(newData);
     }
+
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching footer data", error });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching footer data",
+      error: error.message
+    });
   }
 };
 
+// Create Footer Data
+export const createFooter = async (req, res) => {
+  try {
+    const { copyright, contact, socialIcons, logoUrl } = req.body;
+
+    const newFooter = await Footer.create({
+      copyright,
+      contact,
+      socialIcons,
+      logoUrl
+    });
+
+    notifyClients("footerCreated", newFooter);
+
+    res.status(201).json({
+      success: true,
+      message: "Footer created successfully",
+      data: newFooter
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error creating footer data",
+      error: error.message
+    });
+  }
+};
+
+// Update Footer Data
 export const updateFooter = async (req, res) => {
   try {
-    const data = await Footer.findOne();
-    if (!data) {
-      const newData = new Footer(req.body);
-      await newData.save();
-      notifyClients("footerUpdated");
-      return res.status(201).json(newData);
-    }
-    Object.assign(data, req.body);
-    await data.save();
-    notifyClients("footerUpdated");
-    res.status(200).json(data);
+    const updatedFooter = await Footer.findOneAndUpdate({}, req.body, {
+      new: true,
+      upsert: true
+    });
+
+    notifyClients("footerUpdated", updatedFooter);
+
+    res.status(200).json({
+      success: true,
+      message: "Footer updated successfully",
+      data: updatedFooter
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error updating footer data", error });
+    res.status(500).json({
+      success: false,
+      message: "Error updating footer data",
+      error: error.message
+    });
+  }
+};
+
+// Delete Footer Data
+export const deleteFooter = async (req, res) => {
+  try {
+    const deletedFooter = await Footer.findOneAndDelete({});
+
+    if (!deletedFooter) {
+      return res.status(404).json({
+        success: false,
+        message: "Footer data not found"
+      });
+    }
+
+    notifyClients("footerDeleted", deletedFooter);
+
+    res.status(200).json({
+      success: true,
+      message: "Footer deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error deleting footer data",
+      error: error.message
+    });
   }
 };

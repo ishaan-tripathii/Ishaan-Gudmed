@@ -1,5 +1,5 @@
 import express from 'express';
-import { getPages, createPage, updatePage, deletePage } from '../controllers/pageController.js';
+import { getPages, createPage, updatePage, deletePage } from '../controllers/SliderController.js';
 import authenticateToken from '../middleware/auth.js';
 
 const router = express.Router();

@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 
 const cardSchema = new mongoose.Schema({
-  icon: { type: String }, // Optional, e.g., "FaHospital"
-  title: { type: String }, // Optional
-  description: { type: String }, // Optional
+  icon: { type: String },
+  color: { type: String }, // Add this line
+  title: { type: String },
+  description: { type: String },
 });
 
 const sectionSchema = new mongoose.Schema({

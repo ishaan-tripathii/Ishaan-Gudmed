@@ -1,14 +1,17 @@
-// backend/routes/knowledgePartnerRoutes.js
 import express from "express";
-import { getKnowledgePartners, updateKnowledgePartners } from "../controllers/knowledgePartnerController.js";
-import  authenticateToken  from "../middleware/auth.js"; // Assuming you have this middleware
+import { 
+  getKnowledgePartners, 
+  createKnowledgePartners, 
+  updateKnowledgePartners, 
+  deleteKnowledgePartners 
+} from "../controllers/knowledgePartnerController.js";
+import authenticateToken from "../middleware/auth.js"; 
 
 const router = express.Router();
 
-// GET: Fetch knowledge partners and accreditations
-router.get("/", getKnowledgePartners);
-
-// PUT: Update knowledge partners and accreditations (admin only)
-router.put("/", authenticateToken, updateKnowledgePartners);
+router.get("/", getKnowledgePartners); 
+router.post("/", authenticateToken, createKnowledgePartners); 
+router.put("/:id", authenticateToken, updateKnowledgePartners); 
+router.delete("/:id", authenticateToken, deleteKnowledgePartners); 
 
 export default router;
