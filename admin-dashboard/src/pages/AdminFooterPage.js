@@ -3,7 +3,12 @@ import axios from "axios";
 import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
 
-const socket = io("http://localhost:5000");
+// Initialize Socket.IO connection with reconnection enabled
+const socket = io("http://localhost:5000", {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
 const AdminFooterPage = () => {
   const [footer, setFooter] = useState({
@@ -31,6 +36,7 @@ const AdminFooterPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const token = localStorage.getItem("token");
 
+  // Fetch initial footer data
   const fetchFooter = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/footer");
@@ -47,15 +53,37 @@ const AdminFooterPage = () => {
     }
   };
 
+  // Set up Socket.IO and fetch initial data
   useEffect(() => {
     fetchFooter();
-    socket.on("footerUpdated", () => {
-      fetchFooter();
+
+    socket.on("connect", () => {
+      console.log("Socket.IO connected");
+    });
+    socket.on("disconnect", () => {
+      console.log("Socket.IO disconnected");
+    });
+
+    socket.on("footerUpdated", (updatedData) => {
+      console.log("Received footerUpdated event with data:", updatedData);
+      setFooter((prev) => ({
+        ...prev,
+        copyright: { ...updatedData.copyright },
+        contact: { ...updatedData.contact },
+        socialIcons: [...updatedData.socialIcons],
+        logoUrl: updatedData.logoUrl,
+      }));
       toast.success("Footer updated in real-time!");
     });
-    return () => socket.off("footerUpdated");
+
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("footerUpdated");
+    };
   }, []);
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
@@ -69,7 +97,6 @@ const AdminFooterPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Changes saved successfully!");
-      await fetchFooter();
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Error updating footer data");
@@ -79,6 +106,7 @@ const AdminFooterPage = () => {
     }
   };
 
+  // Add a new social icon
   const addSocialIcon = () => {
     setFooter((prev) => ({
       ...prev,
@@ -87,6 +115,7 @@ const AdminFooterPage = () => {
     toast.success("New social icon added!");
   };
 
+  // Update a social icon field
   const handleSocialIconChange = (index, field, value) => {
     setFooter((prev) => ({
       ...prev,
@@ -96,6 +125,7 @@ const AdminFooterPage = () => {
     }));
   };
 
+  // Delete a social icon
   const handleDeleteSocialIcon = (index) => {
     if (!window.confirm("Are you sure you want to delete this social icon?")) return;
     setFooter((prev) => ({
@@ -105,6 +135,7 @@ const AdminFooterPage = () => {
     toast.success("Social icon deleted!");
   };
 
+  // Update copyright or contact fields
   const handleFieldChange = (section, field, value) => {
     setFooter((prev) => ({
       ...prev,
@@ -112,6 +143,7 @@ const AdminFooterPage = () => {
     }));
   };
 
+  // Update logo URL
   const handleLogoChange = (field, value) => {
     setFooter((prev) => ({ ...prev, [field]: value }));
   };

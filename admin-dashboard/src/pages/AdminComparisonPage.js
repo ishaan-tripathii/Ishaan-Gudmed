@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // Import the CSS for styling
 
 const socket = io("http://localhost:5000");
 
@@ -10,7 +12,6 @@ const AdminComparisonPage = () => {
     title: "GudMed vs Other Technologies",
     items: [],
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
 
@@ -35,7 +36,7 @@ const AdminComparisonPage = () => {
       });
       setLoading(false);
     } catch (err) {
-      setError(err.message || "Failed to fetch comparison data");
+      toast.error(err.message || "Failed to fetch comparison data");
       setLoading(false);
     }
   };
@@ -49,7 +50,7 @@ const AdminComparisonPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
-      setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
       return;
     }
     try {
@@ -59,9 +60,9 @@ const AdminComparisonPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       await fetchComparison();
-      setError("");
+      toast.success("Comparison data updated successfully!");
     } catch (err) {
-      setError(err.response?.data?.message || "Error updating comparison data");
+      toast.error(err.response?.data?.message || "Error updating comparison data");
     }
   };
 
@@ -91,6 +92,7 @@ const AdminComparisonPage = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
+    toast.success("Item deleted successfully!");
   };
 
   const moveItemUp = (index) => {
@@ -121,7 +123,6 @@ const AdminComparisonPage = () => {
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Manage Comparison Section</h1>
-        {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="bg-white p-6 rounded-lg shadow-md">
@@ -202,7 +203,9 @@ const AdminComparisonPage = () => {
                     type="button"
                     onClick={() => moveItemUp(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↑
                   </button>
@@ -210,7 +213,11 @@ const AdminComparisonPage = () => {
                     type="button"
                     onClick={() => moveItemDown(index)}
                     disabled={index === comparison.items.length - 1}
-                    className={`p-2 rounded-lg text-white ${index === comparison.items.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === comparison.items.length - 1
+                        ? "bg-gray-300 cursor-not-allowed"
+                        : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↓
                   </button>
@@ -242,6 +249,9 @@ const AdminComparisonPage = () => {
             </button>
           </div>
         </form>
+
+        {/* Add ToastContainer to display notifications */}
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} closeOnClick />
       </div>
     </div>
   );

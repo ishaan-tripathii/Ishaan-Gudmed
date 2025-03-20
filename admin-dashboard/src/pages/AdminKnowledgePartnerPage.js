@@ -1,6 +1,6 @@
-// src/components/AdminKnowledgePartnerPage.jsx
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
+import { toast } from "react-toastify";
 
 const socket = io("http://localhost:5000");
 
@@ -8,7 +8,7 @@ const AdminKnowledgePartnerPage = () => {
   const [settings, setSettings] = useState({
     partners: [],
     accreditations: [],
-    twoFactorsImage: "https://example.com/default-two-factors.png", // Default value
+    twoFactorsImage: "https://example.com/default-two-factors.png",
     titles: {
       weAre: "We Are !",
       accredited: "Accredited",
@@ -31,18 +31,30 @@ const AdminKnowledgePartnerPage = () => {
           accredited: data.titles?.accredited || "Accredited",
           knowledgePartners: data.titles?.knowledgePartners || "Our Knowledge Partners",
         },
-        twoFactorsImage: data.twoFactorsImage || "https://example.com/default-two-factors.png", // Fallback
+        twoFactorsImage: data.twoFactorsImage || "https://example.com/default-two-factors.png",
       });
       setLoading(false);
     } catch (err) {
-      setError(err.message || "Failed to fetch settings");
+      setError(err.message);
+      toast.error(err.message || "Failed to fetch settings");
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchSettings();
-    socket.on("knowledgePartnersUpdated", fetchSettings);
+    socket.on("knowledgePartnersUpdated", (updatedData) => {
+      setSettings({
+        ...updatedData,
+        titles: {
+          weAre: updatedData.titles?.weAre || "We Are !",
+          accredited: updatedData.titles?.accredited || "Accredited",
+          knowledgePartners: updatedData.titles?.knowledgePartners || "Our Knowledge Partners",
+        },
+        twoFactorsImage: updatedData.twoFactorsImage || "https://example.com/default-two-factors.png",
+      });
+      toast.success("Settings updated in real-time!");
+    });
     return () => socket.off("knowledgePartnersUpdated");
   }, []);
 
@@ -50,14 +62,21 @@ const AdminKnowledgePartnerPage = () => {
     e.preventDefault();
     if (!token) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
       return;
     }
     if (!settings.twoFactorsImage.trim()) {
       setError("Two Factors Image URL is required.");
+      toast.error("Two Factors Image URL is required.");
       return;
     }
     try {
-      const response = await fetch("http://localhost:5000/api/knowledge-partners", {
+      const fetchResponse = await fetch("http://localhost:5000/api/knowledge-partners");
+      if (!fetchResponse.ok) throw new Error("Failed to fetch existing data");
+      const currentData = await fetchResponse.json();
+      const id = currentData._id;
+
+      const response = await fetch(`http://localhost:5000/api/knowledge-partners/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -69,10 +88,11 @@ const AdminKnowledgePartnerPage = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to update settings");
       }
-      await fetchSettings();
+      toast.success("Settings updated successfully!");
       setError("");
     } catch (err) {
-      setError(err.message || "Error updating settings");
+      setError(err.message);
+      toast.error(err.message || "Error updating settings");
     }
   };
 
@@ -206,7 +226,9 @@ const AdminKnowledgePartnerPage = () => {
                     type="button"
                     onClick={() => moveItemUp("partners", index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↑
                   </button>
@@ -214,7 +236,11 @@ const AdminKnowledgePartnerPage = () => {
                     type="button"
                     onClick={() => moveItemDown("partners", index)}
                     disabled={index === settings.partners.length - 1}
-                    className={`p-2 rounded-lg text-white ${index === settings.partners.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === settings.partners.length - 1
+                        ? "bg-gray-300 cursor-not-allowed"
+                        : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↓
                   </button>
@@ -250,7 +276,9 @@ const AdminKnowledgePartnerPage = () => {
                     type="text"
                     placeholder="Title (e.g., NABH)"
                     value={accreditation.title}
-                    onChange={(e) => handleItemChange("accreditations", index, "title", e.target.value)}
+                    onChange={(e) =>
+                      handleItemChange("accreditations", index, "title", e.target.value)
+                    }
                     className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -258,7 +286,9 @@ const AdminKnowledgePartnerPage = () => {
                     type="text"
                     placeholder="Image URL (e.g., http://example.com/nbha.png)"
                     value={accreditation.image}
-                    onChange={(e) => handleItemChange("accreditations", index, "image", e.target.value)}
+                    onChange={(e) =>
+                      handleItemChange("accreditations", index, "image", e.target.value)
+                    }
                     className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -268,7 +298,9 @@ const AdminKnowledgePartnerPage = () => {
                     type="button"
                     onClick={() => moveItemUp("accreditations", index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↑
                   </button>
@@ -276,7 +308,11 @@ const AdminKnowledgePartnerPage = () => {
                     type="button"
                     onClick={() => moveItemDown("accreditations", index)}
                     disabled={index === settings.accreditations.length - 1}
-                    className={`p-2 rounded-lg text-white ${index === settings.accreditations.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`p-2 rounded-lg text-white ${
+                      index === settings.accreditations.length - 1
+                        ? "bg-gray-300 cursor-not-allowed"
+                        : "bg-blue-500 hover:bg-blue-600"
+                    }`}
                   >
                     ↓
                   </button>

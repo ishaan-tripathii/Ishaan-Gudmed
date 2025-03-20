@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const socket = io("http://localhost:5000");
+const socket = io("http://localhost:5000", { reconnection: true });
 
 const AdminClientPage = () => {
   const [settings, setSettings] = useState({
@@ -17,23 +19,61 @@ const AdminClientPage = () => {
   const fetchSettings = async () => {
     try {
       const response = await fetch("http://localhost:5000/api/clients");
+      if (!response.ok) throw new Error("Failed to fetch settings");
       const data = await response.json();
       setSettings(data);
+      setError("");
     } catch (err) {
       setError("Failed to fetch client settings");
+      toast.error("Failed to fetch settings");
     }
   };
 
   useEffect(() => {
     fetchSettings();
-    socket.on("clientsUpdated", fetchSettings);
-    return () => socket.off("clientsUpdated");
+
+    socket.on("connect", () => {
+      console.log("Connected to Socket.IO server, socket ID:", socket.id);
+    });
+
+    socket.on("clientSettingsUpdated", (eventData) => {
+      console.log("Frontend: Received clientSettingsUpdated event:", eventData);
+      // Extract the data field from the event payload
+      const updatedSettings = eventData?.data;
+      // Ensure the data structure matches what the state expects
+      if (updatedSettings && updatedSettings.clients && updatedSettings.swiperSettings) {
+        setSettings(updatedSettings);
+        toast.success("Settings updated in real-time!");
+      } else {
+        console.error("Frontend: Invalid data structure received:", eventData);
+        toast.warn("Received invalid settings data, refetching...");
+        fetchSettings(); // Fallback to refetch if the data is invalid
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Frontend: Socket.IO connection error:", err.message);
+      toast.error("Failed to connect to server: " + err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Frontend: Socket.IO disconnected:", reason);
+      toast.warn("Disconnected from server");
+    });
+
+    return () => {
+      socket.off("clientSettingsUpdated");
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
+    };
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to update settings");
       return;
     }
     try {
@@ -46,10 +86,13 @@ const AdminClientPage = () => {
         body: JSON.stringify(settings),
       });
       if (!response.ok) throw new Error("Failed to update settings");
-      await fetchSettings();
+      const updatedData = await response.json();
+      setSettings(updatedData.data);
       setError("");
+      toast.success("Settings updated successfully!");
     } catch (err) {
       setError(err.message || "Error updating settings");
+      toast.error(err.message || "Error updating settings");
     }
   };
 
@@ -107,6 +150,7 @@ const AdminClientPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Manage Our Clients</h1>
         {error && (

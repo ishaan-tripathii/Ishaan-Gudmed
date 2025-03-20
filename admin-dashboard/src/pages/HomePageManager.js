@@ -7,7 +7,11 @@ const HomePageManager = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) navigate('/login');
+    console.log("User:", user); // Debugging: Check the user object
+    if (!user) {
+      console.log("User not logged in, navigating to /login");
+      navigate('/login');
+    }
   }, [user, navigate]);
 
   const handleLogout = async () => {
@@ -15,7 +19,10 @@ const HomePageManager = () => {
     navigate('/login');
   };
 
-  if (!user) return null;
+  if (!user) {
+    console.log("User is null, returning null"); // Debugging: Check if this condition is hit
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -67,12 +74,11 @@ const HomePageManager = () => {
           <h2 className="text-xl font-semibold text-blue-600">Technology Page</h2>
         </Link>
         <Link
-          to="/admin/home/ai-section"
+          to="/admin/home/ai-page"
           className="p-4 bg-blue-100 rounded-lg hover:bg-blue-200 text-center"
         >
-          <h2 className="text-xl font-semibold text-blue-600">ai page</h2>
+          <h2 className="text-xl font-semibold text-blue-600">AI Page</h2>
         </Link>
-
         <Link
           to="/admin/home/comparison-section"
           className="p-4 bg-blue-100 rounded-lg hover:bg-blue-200 text-center"
@@ -83,7 +89,7 @@ const HomePageManager = () => {
           to="/admin/home/why-gudmed-unique"
           className="p-4 bg-blue-100 rounded-lg hover:bg-blue-200 text-center"
         >
-          <h2 className="text-xl font-semibold text-blue-600">Why Gudmed Unique</h2>
+          <h2 className="text-xl font-semibold text-blue-600">Why GudMed is Unique</h2>
         </Link>
         <Link
           to="/admin/home/knowledge-partner-card-section"

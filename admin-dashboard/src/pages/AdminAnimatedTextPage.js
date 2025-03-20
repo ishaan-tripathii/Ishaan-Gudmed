@@ -116,7 +116,7 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("redMarquee", index, "text", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Text (e.g., Faster Discharges = Higher Bed Turnover ⏩)"
-                  required
+                  
                 />
                 <input
                   type="text"
@@ -124,7 +124,7 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("redMarquee", index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon (e.g., FaRobot)"
-                  required
+                 
                 />
                 <button
                   type="button"
@@ -155,7 +155,7 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("blackMarquee", index, "text", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Text (e.g., Direct Pharmacy Integration for more revenues 💰)"
-                  required
+                  
                 />
                 <input
                   type="text"
@@ -163,7 +163,7 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("blackMarquee", index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon (e.g., FaCapsules)"
-                  required
+                  
                 />
                 <button
                   type="button"

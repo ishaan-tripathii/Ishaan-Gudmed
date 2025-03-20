@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
-import { useAuth } from "../context/AuthContext";
-import { Link } from "react-router-dom";
 import { Trash2, PlusCircle, Edit2 } from "lucide-react";
 import { motion } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast"; // Import react-hot-toast
 
-// Initialize Socket.IO client
 const socket = io("http://localhost:5000", {
   autoConnect: true,
   reconnection: true,
 });
 
-const TechnologyPageManager = () => {
-  const { token } = useAuth();
+const AdminAiPage = () => {
+  const token = localStorage.getItem("token");
   const [formData, setFormData] = useState({
     title: "",
+    titleColor: "#000000",
     description: "",
     slug: "",
     sections: [
@@ -23,39 +22,49 @@ const TechnologyPageManager = () => {
     ],
   });
   const [pages, setPages] = useState([]);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editPageId, setEditPageId] = useState(null);
 
-  // Fetch pages and set up real-time updates
-  useEffect(() => {
-    const fetchPages = async () => {
-      setLoading(true);
-      try {
-        if (!token) throw new Error("Please log in to view pages.");
-        const response = await axios.get("http://localhost:5000/api/technology", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        // Handle response with nested 'data' property
-        const fetchedPages = response.data.data || (Array.isArray(response.data) ? response.data : []);
-        setPages(fetchedPages);
-      } catch (error) {
-        setMessage(error.response?.data?.message || error.message || "Failed to fetch pages");
-        setMessageType("error");
-        setPages([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchPages = async () => {
+    setLoading(true);
+    try {
+      if (!token) throw new Error("Please log in to view pages.");
+      const response = await axios.get("http://localhost:5000/api/ai-pages", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const fetchedPages = Array.isArray(response.data.data)
+        ? response.data.data
+        : Array.isArray(response.data)
+        ? response.data
+        : [];
+      setPages(fetchedPages);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Failed to fetch pages");
+      setPages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchPages();
 
-    // Real-time updates with Socket.IO
-    socket.on("contentUpdated", (updatedPage) => {
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    socket.on("aiPageUpdated", (updatedPage) => {
+      console.log("Socket received aiPageUpdated:", updatedPage);
       setPages((prevPages) => {
         const currentPages = Array.isArray(prevPages) ? prevPages : [];
+        if (updatedPage.deleted) {
+          return currentPages.filter((page) => page._id !== updatedPage._id);
+        }
         const exists = currentPages.some((page) => page._id === updatedPage._id);
         if (exists) {
           return currentPages.map((page) =>
@@ -65,24 +74,39 @@ const TechnologyPageManager = () => {
           return [...currentPages, updatedPage];
         }
       });
-      setMessage("Page updated in real-time");
-      setMessageType("success");
+      toast.success("Page updated in real-time");
+    });
+
+    socket.on("whyGudMedUpdated", (updatedPage) => {
+      console.log("Socket received whyGudMedUpdated:", updatedPage);
     });
 
     return () => {
-      socket.off("contentUpdated");
+      socket.off("aiPageUpdated");
+      socket.off("whyGudMedUpdated");
+      socket.off("connect");
+      socket.off("connect_error");
     };
   }, [token]);
 
   const handleChange = (e, sectionIndex, cardIndex) => {
     const { name, value } = e.target;
     if (sectionIndex !== undefined && cardIndex !== undefined) {
-      const updatedSections = [...formData.sections];
-      updatedSections[sectionIndex].cards[cardIndex][name] = value;
+      const updatedSections = formData.sections.map((section, sIdx) =>
+        sIdx === sectionIndex
+          ? {
+              ...section,
+              cards: section.cards.map((card, cIdx) =>
+                cIdx === cardIndex ? { ...card, [name]: value } : card
+              ),
+            }
+          : section
+      );
       setFormData({ ...formData, sections: updatedSections });
     } else if (sectionIndex !== undefined) {
-      const updatedSections = [...formData.sections];
-      updatedSections[sectionIndex][name] = value;
+      const updatedSections = formData.sections.map((section, sIdx) =>
+        sIdx === sectionIndex ? { ...section, [name]: value } : section
+      );
       setFormData({ ...formData, sections: updatedSections });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -111,27 +135,35 @@ const TechnologyPageManager = () => {
   };
 
   const addCard = (sectionIndex) => {
-    const updatedSections = [...formData.sections];
-    updatedSections[sectionIndex].cards.push({ icon: "", color: "", title: "", description: "" });
+    const updatedSections = formData.sections.map((section, sIdx) =>
+      sIdx === sectionIndex
+        ? {
+            ...section,
+            cards: [...section.cards, { icon: "", color: "", title: "", description: "" }],
+          }
+        : section
+    );
     setFormData({ ...formData, sections: updatedSections });
   };
 
   const removeCard = (sectionIndex, cardIndex) => {
-    const updatedSections = [...formData.sections];
-    updatedSections[sectionIndex].cards = updatedSections[sectionIndex].cards.filter(
-      (_, idx) => idx !== cardIndex
+    const updatedSections = formData.sections.map((section, sIdx) =>
+      sIdx === sectionIndex
+        ? {
+            ...section,
+            cards: section.cards.filter((_, cIdx) => cIdx !== cardIndex).length
+              ? section.cards.filter((_, cIdx) => cIdx !== cardIndex)
+              : [{ icon: "", color: "", title: "", description: "" }],
+          }
+        : section
     );
-    if (updatedSections[sectionIndex].cards.length === 0) {
-      updatedSections[sectionIndex].cards.push({ icon: "", color: "", title: "", description: "" });
-    }
     setFormData({ ...formData, sections: updatedSections });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.description || !formData.slug) {
-      setMessage("Title, description, and slug are required.");
-      setMessageType("error");
+      toast.error("Title, description, and slug are required.");
       return;
     }
 
@@ -140,23 +172,23 @@ const TechnologyPageManager = () => {
       let response;
       if (editMode) {
         response = await axios.put(
-          `http://localhost:5000/api/technology/${editPageId}`,
+          `http://localhost:5000/api/ai-pages/${editPageId}`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setMessage("Page updated successfully");
+        toast.success("AI Page updated successfully");
+        socket.emit("aiPageUpdated", response.data.data);
       } else {
-        response = await axios.post("http://localhost:5000/api/technology", formData, {
+        response = await axios.post("http://localhost:5000/api/ai-pages", formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setMessage("Page created successfully");
+        toast.success("AI Page created successfully");
+        socket.emit("aiPageUpdated", response.data.data);
       }
-      setMessageType("success");
-      socket.emit("contentUpdated", response.data);
+      await fetchPages();
       resetForm();
     } catch (error) {
-      setMessage(error.response?.data?.message || "Error saving page");
-      setMessageType("error");
+      toast.error(error.response?.data?.message || "Error saving AI page");
     } finally {
       setLoading(false);
     }
@@ -166,36 +198,39 @@ const TechnologyPageManager = () => {
     setEditMode(true);
     setEditPageId(page._id);
     setFormData({
-      title: page.title,
-      description: page.description,
-      slug: page.slug,
-      sections: page.sections.map((section) => ({
-        cardType: section.cardType,
-        cards: section.cards.map((card) => ({
-          icon: card.icon,
-          color: card.color,
-          title: card.title,
-          description: card.description,
-        })),
-      })),
+      title: page.title || "",
+      titleColor: page.titleColor || "#000000",
+      description: page.description || "",
+      slug: page.slug || "",
+      sections: Array.isArray(page.sections)
+        ? page.sections.map((section) => ({
+            cardType: section.cardType || "highlight",
+            cards: Array.isArray(section.cards)
+              ? section.cards.map((card) => ({
+                  icon: card.icon || "",
+                  color: card.color || "",
+                  title: card.title || "",
+                  description: card.description || "",
+                }))
+              : [{ icon: "", color: "", title: "", description: "" }],
+          }))
+        : [{ cardType: "highlight", cards: [{ icon: "", color: "", title: "", description: "" }] }],
     });
   };
 
   const handleDelete = async (pageId) => {
-    if (!window.confirm("Are you sure you want to delete this page?")) return;
+    if (!window.confirm("Are you sure you want to delete this AI page?")) return;
 
     setLoading(true);
     try {
-      const response = await axios.delete(`http://localhost:5000/api/technology/${pageId}`, {
+      await axios.delete(`http://localhost:5000/api/ai-pages/${pageId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMessage("Page deleted successfully");
-      setMessageType("success");
-      socket.emit("contentUpdated", { _id: pageId, deleted: true }); // Custom event for deletion
-      setPages((prevPages) => prevPages.filter((page) => page._id !== pageId));
+      toast.success("AI Page deleted successfully");
+      socket.emit("aiPageUpdated", { _id: pageId, deleted: true });
+      await fetchPages();
     } catch (error) {
-      setMessage(error.response?.data?.message || "Error deleting page");
-      setMessageType("error");
+      toast.error(error.response?.data?.message || "Error deleting AI page");
     } finally {
       setLoading(false);
     }
@@ -204,6 +239,7 @@ const TechnologyPageManager = () => {
   const resetForm = () => {
     setFormData({
       title: "",
+      titleColor: "#000000",
       description: "",
       slug: "",
       sections: [
@@ -221,22 +257,11 @@ const TechnologyPageManager = () => {
       exit={{ opacity: 0 }}
       className="container mx-auto p-6 max-w-4xl"
     >
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} /> {/* Add Toaster */}
       <div className="bg-white rounded-lg p-6">
-        <h1 className="text-3xl font-bold mb-6">Technology Page Manager</h1>
+        <h1 className="text-3xl font-bold mb-6">AI Page Manager</h1>
 
-        {/* Message Display */}
-        {message && (
-          <div
-            className={`p-4 mb-4 rounded-lg ${
-              messageType === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-            }`}
-          >
-            {message}
-          </div>
-        )}
-
-        {/* Form for Create/Update */}
-        <h2 className="text-2xl font-semibold mb-4">{editMode ? "Edit Technology Page" : "Create New Technology Page"}</h2>
+        <h2 className="text-2xl font-semibold mb-4">{editMode ? "Edit AI Page" : "Create New AI Page"}</h2>
         <form onSubmit={handleSubmit} className="mb-8">
           <div className="mb-4">
             <label className="block text-gray-700 font-medium mb-2">Title</label>
@@ -247,6 +272,24 @@ const TechnologyPageManager = () => {
               onChange={(e) => handleChange(e)}
               className="w-full p-2 border rounded-lg"
               required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">Title Color (Hex or CSS Color)</label>
+            <input
+              type="text"
+              name="titleColor"
+              value={formData.titleColor}
+              onChange={(e) => handleChange(e)}
+              className="w-full p-2 border rounded-lg"
+              placeholder="e.g., #FF0000 or red"
+            />
+            <input
+              type="color"
+              name="titleColor"
+              value={formData.titleColor}
+              onChange={(e) => handleChange(e)}
+              className="mt-2 w-16 h-10 p-1 border rounded-lg"
             />
           </div>
           <div className="mb-4">
@@ -272,7 +315,7 @@ const TechnologyPageManager = () => {
             />
           </div>
 
-          {formData.sections.map((section, sectionIndex) => (
+          {(formData.sections || []).map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6 p-4 border rounded-lg">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold">Section {sectionIndex + 1}</h4>
@@ -296,7 +339,7 @@ const TechnologyPageManager = () => {
                   <option value="motion">Motion</option>
                 </select>
               </div>
-              {section.cards.map((card, cardIndex) => (
+              {(section.cards || []).map((card, cardIndex) => (
                 <div key={cardIndex} className="mb-4 p-4 border rounded-lg bg-gray-50">
                   <div className="flex justify-between items-center mb-2">
                     <h5 className="text-md font-medium">Card {cardIndex + 1}</h5>
@@ -392,30 +435,30 @@ const TechnologyPageManager = () => {
           </div>
         </form>
 
-        {/* Existing Pages List */}
-        <h2 className="text-2xl font-bold mb-4">Existing Technology Pages</h2>
+        <h2 className="text-2xl font-bold mb-4">Existing AI Pages</h2>
         {loading ? (
           <div className="text-center py-4">Loading...</div>
         ) : pages.length === 0 ? (
-          <p>No technology pages found.</p>
+          <p>No AI pages found.</p>
         ) : (
           <ul className="space-y-4">
             {pages.map((page) => (
               <li key={page._id} className="p-4 border border-gray-200 rounded-md">
                 <h3 className="text-xl font-semibold">{page.title}</h3>
+                <p className="text-gray-600">Title Color: {page.titleColor || "Not set"}</p>
                 <p className="text-gray-600">{page.description}</p>
                 <p className="text-sm text-gray-500">Slug: {page.slug}</p>
                 <div className="mt-2">
-                  {page.sections.map((section, sectionIdx) => (
-                    <div key={section._id} className="mb-4">
+                  {(page.sections || []).map((section, sectionIdx) => (
+                    <div key={sectionIdx} className="mb-4">
                       <h4 className="text-lg font-medium">Section {sectionIdx + 1} ({section.cardType})</h4>
                       <ul className="ml-4 space-y-2">
-                        {section.cards.map((card) => (
-                          <li key={card._id} className="border p-2 rounded-md">
+                        {(section.cards || []).map((card, cardIdx) => (
+                          <li key={cardIdx} className="border p-2 rounded-md">
                             <p><strong>Icon:</strong> {card.icon || "None"}</p>
                             <p><strong>Color:</strong> {card.color || "None"}</p>
-                            <p><strong>Title:</strong> {card.title}</p>
-                            <p><strong>Description:</strong> {card.description}</p>
+                            <p><strong>Title:</strong> {card.title || "Untitled"}</p>
+                            <p><strong>Description:</strong> {card.description || "No description"}</p>
                           </li>
                         ))}
                       </ul>
@@ -445,4 +488,4 @@ const TechnologyPageManager = () => {
   );
 };
 
-export default TechnologyPageManager;
+export default AdminAiPage;

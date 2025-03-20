@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { socket } from "../../socket";
+import io from "socket.io-client"; // Import Socket.IO client
 import { useAuth } from "../../context/AuthContext";
 import { Trash2, Edit, RefreshCw, PlusCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PageForm from "../PageForm";
+
+// Initialize Socket.IO connection directly in the file
+const socket = io("http://localhost:5000", {
+  reconnection: true, // Automatically reconnect if disconnected
+  reconnectionAttempts: 5, // Try reconnecting 5 times
+  reconnectionDelay: 1000, // Wait 1 second between attempts
+});
 
 const SliderManager = () => {
   const [pages, setPages] = useState([]);
@@ -68,14 +75,30 @@ const SliderManager = () => {
   // Fetch pages on mount and setup socket
   useEffect(() => {
     fetchPages();
+
+    // Log connection status for debugging
+    socket.on("connect", () => {
+      console.log("Connected to Socket.IO server");
+    });
+
     socket.on("contentUpdated", () => {
       fetchPages();
       setMessage("Content updated in real-time");
       setMessageType("success");
       setTimeout(() => setMessage(""), 3000);
     });
-    return () => socket.off("contentUpdated");
-  }, []);
+
+    socket.on("disconnect", () => {
+      console.log("Disconnected from Socket.IO server");
+    });
+
+    // Cleanup socket listeners on unmount
+    return () => {
+      socket.off("contentUpdated");
+      socket.off("connect");
+      socket.off("disconnect");
+    };
+  }, []); // Empty dependency array ensures this runs only on mount
 
   // Clear message after 5 seconds
   useEffect(() => {
