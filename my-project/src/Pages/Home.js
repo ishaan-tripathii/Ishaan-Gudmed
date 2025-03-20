@@ -14,6 +14,7 @@ import WhyGudmedUnique from '../components/WhyGudmedUnique';
 import TechnologyPage from '../components/TechnologyPage';
 import CounterSection from '../components/CounterSection';
 import StepByStep from '../components/StepByStep';
+import AiPage from '../components/AiPage';
 
 
 
@@ -34,6 +35,7 @@ const Home = () => {
       <CounterSection></CounterSection>
 
       <TechnologyPage></TechnologyPage>
+      <AiPage></AiPage>
       {/* <FeaturesSection></FeaturesSection>
 
       <FeaturesSection></FeaturesSection> */}

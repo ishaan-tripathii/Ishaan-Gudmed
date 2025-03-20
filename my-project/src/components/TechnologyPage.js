@@ -28,7 +28,7 @@ const HighlightCard = ({ icon, title, description }) => {
   );
 };
 
-const MotionCard = ({ icon, title, description }) => {
+const MotionCard = ({ icon, color, title, description }) => {
   const Icon = iconMap[icon] || FaRobot;
   return (
     <motion.div
@@ -38,8 +38,11 @@ const MotionCard = ({ icon, title, description }) => {
       transition={{ duration: 0.5 }}
     >
       {icon && (
-        <div className="flex items-center justify-center mb-6 p-4 rounded-full bg-gray-200">
-          <Icon className="text-gray-800 text-5xl" />
+        <div
+          className="flex items-center justify-center mb-6 p-4 rounded-full"
+          style={{ backgroundColor: color || "#E5E7EB" }} // Use color from backend, fallback to bg-gray-200
+        >
+          <Icon className="text-white text-5xl" />
         </div>
       )}
       {title && <h4 className="text-2xl font-semibold text-[#2E4168] mb-4">{title}</h4>}
@@ -57,7 +60,6 @@ const TechnologyPage = () => {
     try {
       setLoading(true);
       const response = await axios.get("http://localhost:5000/api/technology");
-      // Check if success is true and data is an array with items
       if (response.data.success && response.data.data.length > 0) {
         setTechnologyData(response.data.data[0]);
       } else {
@@ -127,6 +129,7 @@ const TechnologyPage = () => {
                   <MotionCard
                     key={cardIndex}
                     icon={card.icon}
+                    color={card.color} // Pass the color field for background
                     title={card.title}
                     description={card.description}
                   />

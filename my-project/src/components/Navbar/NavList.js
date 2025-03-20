@@ -7,12 +7,12 @@ const NavList = [
   },
   {
     id: "2",
-    list: "Doctors",
+    list: "For Doctors",
     link: "/doctors", // Assuming this links to the doctors' page
   },
   {
     id: "3",
-    list: "Hospital",
+    list: "For Hospitals",
     link: "/hospital", // Linking to the hospital page
     dropdown: [
       {
@@ -26,7 +26,7 @@ const NavList = [
   },
   {
     id: "4",
-    list: "Patients",
+    list: "For Patients",
     link: "/patients", // Assuming this links to the doctors' page
   },
   {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
-import { FaHospitalAlt, FaPrescription, FaVials, FaCapsules, FaUserMd, FaRobot } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; // Import all Fa icons dynamically
 import axios from "axios";
 import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
@@ -45,13 +45,24 @@ const AnimatedText = () => {
     return () => socket.off("animatedTextUpdated");
   }, []);
 
-  const iconMap = {
-    FaHospitalAlt: <FaHospitalAlt />,
-    FaPrescription: <FaPrescription className="text-blue-400" />,
-    FaVials: <FaVials className="text-green-400" />,
-    FaCapsules: <FaCapsules className="text-purple-500" />,
-    FaUserMd: <FaUserMd className="text-white" />,
-    FaRobot: <FaRobot className="text-yellow-500" />,
+  // Optional predefined styles for specific icons (can be expanded or removed)
+  const iconStyles = {
+    FaPrescription: "text-blue-400",
+    FaVials: "text-green-400",
+    FaCapsules: "text-purple-500",
+    FaUserMd: "text-white",
+    FaRobot: "text-yellow-500",
+  };
+
+  const renderIcon = (iconName) => {
+    if (!iconName) return null; // No icon provided, return nothing
+    const IconComponent = FaIcons[iconName];
+    if (!IconComponent) {
+      console.warn(`Icon "${iconName}" not found in react-icons/fa`);
+      return null; // Invalid icon name, return nothing
+    }
+    const className = iconStyles[iconName] || "text-white"; // Default to white if no specific style
+    return <IconComponent className={className} />;
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -70,7 +81,7 @@ const AnimatedText = () => {
         <Marquee speed={60} gradient={false} direction="right" className="hide-scrollbar">
           {animatedText.redMarquee.map((item, index) => (
             <span key={index} className="text-4xl font-bold text-white px-8 flex items-center gap-2">
-              {iconMap[item.icon] || <FaRobot className="text-yellow-500" />}
+              {renderIcon(item.icon)}
               {item.text}
             </span>
           ))}
@@ -88,7 +99,7 @@ const AnimatedText = () => {
         <Marquee speed={60} gradient={false} direction="left" className="hide-scrollbar">
           {animatedText.blackMarquee.map((item, index) => (
             <span key={index} className="text-4xl font-bold text-white px-8 flex items-center gap-2">
-              {iconMap[item.icon] || <FaRobot className="text-yellow-500" />}
+              {renderIcon(item.icon)}
               {item.text}
             </span>
           ))}
