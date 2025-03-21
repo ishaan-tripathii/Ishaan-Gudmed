@@ -5,8 +5,8 @@ import io from "socket.io-client";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const WHY_GUDMED_PORT = "5000"; // Adjust to your backend port
-const socket = io(`http://localhost:${WHY_GUDMED_PORT}`);
+const WHY_GUDMED_PORT = "5000";
+const socket = io(`http://localhost:${WHY_GUDMED_PORT}`, { reconnection: true });
 
 const WhyGudmedUnique = () => {
   const [pageData, setPageData] = useState(null);
@@ -20,6 +20,7 @@ const WhyGudmedUnique = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const result = await response.json();
+      console.log("Fetched Why GudMed data:", result);
       const data = result.success && result.data.length > 0 ? result.data[0] : null;
       if (data && data.cards) {
         data.cards = data.cards.map((card) => {
@@ -53,14 +54,21 @@ const WhyGudmedUnique = () => {
     fetchData();
 
     socket.on("connect", () => {
-      console.log("Connected to Socket.IO on port", WHY_GUDMED_PORT);
+      console.log("WhyGudMed: Connected to Socket.IO server");
     });
 
-    socket.on("contentUpdated", (update) => {
-      if (update.type === "why-gudmed" && update.data?.length > 0) {
-        const data = update.data[0];
-        if (data.cards) {
-          data.cards = data.cards.map((card) => {
+    socket.on("whyGudMedUpdated", (updatedData) => {
+      console.log("WhyGudMed: Received update event:", updatedData);
+      if (updatedData.deleted) {
+        console.log("WhyGudMed: Page was deleted, refetching data...");
+        fetchData();
+        return;
+      }
+
+      if (updatedData && updatedData.cards) {
+        const processedData = {
+          ...updatedData,
+          cards: updatedData.cards.map((card) => {
             if (card.title === "Comprehensive Hospital Support" && !card.points) {
               const points = [
                 { icon: "FaClock", text: "Quick Discharge Summaries: Reducing patient waiting times." },
@@ -75,22 +83,30 @@ const WhyGudmedUnique = () => {
               };
             }
             return card;
-          });
-        }
-        setPageData(data);
-        toast.success("Why Gudmed Unique updated!");
+          }),
+        };
+        setPageData(processedData);
+        toast.success("Content updated in real-time!");
+      } else {
+        console.error("WhyGudMed: Invalid update data received:", updatedData);
+        fetchData();
       }
     });
 
     socket.on("connect_error", (err) => {
-      console.error("Socket.IO connection error:", err);
+      console.error("WhyGudMed: Socket.IO connection error:", err);
       setError(`Socket.IO failed to connect to port ${WHY_GUDMED_PORT}`);
     });
 
+    socket.on("disconnect", (reason) => {
+      console.log("WhyGudMed: Socket.IO disconnected:", reason);
+    });
+
     return () => {
-      socket.off("contentUpdated");
+      socket.off("whyGudMedUpdated");
       socket.off("connect");
       socket.off("connect_error");
+      socket.off("disconnect");
     };
   }, []);
 

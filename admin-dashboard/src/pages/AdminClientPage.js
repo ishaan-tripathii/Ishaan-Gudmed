@@ -190,9 +190,8 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientUp(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${
-                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                    }`}
+                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                      }`}
                   >
                     ↑
                   </button>
@@ -200,9 +199,8 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientDown(index)}
                     disabled={index === settings.clients.length - 1}
-                    className={`p-2 rounded-lg text-white ${
-                      index === settings.clients.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                    }`}
+                    className={`p-2 rounded-lg text-white ${index === settings.clients.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                      }`}
                   >
                     ↓
                   </button>
@@ -210,9 +208,8 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientToFirst(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${
-                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
-                    }`}
+                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
+                      }`}
                   >
                     Top
                   </button>

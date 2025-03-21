@@ -1,11 +1,54 @@
-# Ignore node_modules and build artifacts
+# Dependencies
 node_modules/
+**/node_modules/
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+
+# Build outputs
+**/build/
+**/dist/
+**/.next/
+**/.vercel/
+**/.render/
+
+# Logs
+logs
 *.log
 npm-debug.log*
-.env
-dist/
-build/
+yarn-debug.log*
+yarn-error.log*
 
-# IDE files
-.vscode/
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage/
+
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deployment
+.vercel
+.render
+*.zip
+*.tar.gz
+
+# Cache
+.cache/
+.npm/
+.eslintcache

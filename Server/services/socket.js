@@ -23,7 +23,7 @@ const initSocket = (server) => {
 
 const notifyClients = (event, data) => {
   if (io) {
-    // console.log(`Emitting event: ${event}`, data); // Debug log
+    console.log(`Emitting event: ${event}`, data); // Debug log
     io.emit(event, data); // Emit the specified event with data
   } else {
     console.error("Socket.IO not initialized");

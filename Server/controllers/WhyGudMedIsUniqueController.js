@@ -17,11 +17,10 @@ export const getWhyGudMedPages = async (req, res) => {
 
 export const createWhyGudMedPage = async (req, res) => {
   try {
-    const { title, description, slug, cards } = req.body;
-    const newPage = await WhyGudMedPage.create({ title, description, slug, cards });
-
+    const newPage = await WhyGudMedPage.create(req.body);
     console.log(`✅ CREATE operation performed. Data:`, newPage);
 
+    // Notify clients about the new page
     notifyClients("whyGudMedUpdated", newPage);
 
     res.status(201).json({
@@ -50,6 +49,7 @@ export const updateWhyGudMedPage = async (req, res) => {
 
     console.log(`✅ UPDATE operation performed. ID: ${id}, Data:`, updatedPage);
 
+    // Notify clients about the update
     notifyClients("whyGudMedUpdated", updatedPage);
 
     res.status(200).json({
@@ -78,6 +78,7 @@ export const deleteWhyGudMedPage = async (req, res) => {
 
     console.log(`✅ DELETE operation performed. ID: ${id}`);
 
+    // Notify clients about the deletion
     notifyClients("whyGudMedUpdated", { _id: id, deleted: true });
 
     res.status(200).json({ success: true, message: "Why GudMed Page deleted successfully" });

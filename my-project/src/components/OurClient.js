@@ -5,7 +5,7 @@ import "swiper/css";
 import { Autoplay } from "swiper/modules";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5000");
+const socket = io("http://localhost:5000", { reconnection: true });
 
 const ClientLogo = ({ src, alt }) => (
   <div className="flex justify-center items-center mx-auto w-32 h-32 lg:w-40 lg:h-40">
@@ -27,6 +27,7 @@ const OurClient = () => {
     try {
       const response = await fetch("http://localhost:5000/api/clients");
       const data = await response.json();
+      console.log("Fetched client settings:", data);
       setSettings(data);
       setLoading(false);
     } catch (err) {
@@ -37,8 +38,37 @@ const OurClient = () => {
 
   useEffect(() => {
     fetchSettings();
-    socket.on("clientsUpdated", fetchSettings);
-    return () => socket.off("clientsUpdated");
+
+    socket.on("connect", () => {
+      console.log("Client: Connected to Socket.IO server");
+    });
+
+    socket.on("clientSettingsUpdated", (eventData) => {
+      console.log("Client: Received clientSettingsUpdated event:", eventData);
+      const updatedSettings = eventData?.data;
+      if (updatedSettings && updatedSettings.clients && updatedSettings.swiperSettings) {
+        setSettings(updatedSettings);
+        console.log("Client: Settings updated successfully");
+      } else {
+        console.error("Client: Invalid data structure received:", eventData);
+        fetchSettings();
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Client: Socket.IO connection error:", err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Client: Socket.IO disconnected:", reason);
+    });
+
+    return () => {
+      socket.off("clientSettingsUpdated");
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
+    };
   }, []);
 
   if (loading) return <div className="text-center py-10">Loading...</div>;

@@ -1,373 +1,237 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import io from "socket.io-client";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Import toastify CSS
+import React, { useState, useEffect, useCallback } from 'react';
+import useContentSocket from '../hooks/useContentSocket';
+import pagesService from '../services/api/pagesService';
+import DashboardLayout from '../components/common/Layout/DashboardLayout';
+import Table from '../components/common/Table';
+import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 
-const WhyGudMedisUnique = () => {
-  const [pages, setPages] = useState([]);
-  const [currentPage, setCurrentPage] = useState(null);
+const WhyGudMedisUniquePage = () => {
+  const [uniquePoints, setUniquePoints] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    slug: "",
-    cards: [],
-    footer: { title: "", description: "", ctaText: "", ctaLink: "" },
+    title: '',
+    description: '',
+    icon: '',
   });
-  const [socket, setSocket] = useState(null); // Manage socket in state
-  const token = localStorage.getItem("token");
 
-  // Fetch pages from the server
-  const fetchPages = async () => {
+  const fetchUniquePoints = useCallback(async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/why-gudmed");
-      setPages(response.data.data || []);
+      setIsLoading(true);
+      const data = await pagesService.getUniquePoints();
+      setUniquePoints(data);
     } catch (err) {
-      console.error("Error fetching pages:", err);
-      toast.error("Failed to load pages.");
+      toast.error('Failed to fetch unique points');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  // Setup Socket.IO and fetch pages on mount
-  useEffect(() => {
-    const newSocket = io("http://localhost:5000");
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => console.log("Socket connected"));
-    newSocket.on("whyGudMedUpdated", () => {
-      console.log("Received whyGudMedUpdated event");
-      fetchPages();
-    });
-    newSocket.on("connect_error", (err) => console.log("Socket error:", err));
-
-    fetchPages();
-
-    // Cleanup on unmount
-    return () => {
-      newSocket.off("whyGudMedUpdated");
-      newSocket.disconnect();
-    };
   }, []);
+
+  // Socket connection for real-time updates
+  useContentSocket('uniquePoints', useCallback((data) => {
+    if (data.points) {
+      setUniquePoints(data.points);
+    } else {
+      fetchUniquePoints();
+    }
+  }, [fetchUniquePoints]));
+
+  useEffect(() => {
+    fetchUniquePoints();
+  }, [fetchUniquePoints]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) {
-      toast.error("Please log in.");
-      return;
-    }
-    const method = currentPage ? "put" : "post";
-    const url = currentPage
-      ? `http://localhost:5000/api/why-gudmed/${currentPage._id}`
-      : "http://localhost:5000/api/why-gudmed";
-
     try {
-      const response = await axios({
-        method,
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        data: formData,
-      });
-      toast.success(currentPage ? "Page updated!" : "Page created!");
-      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
-      await fetchPages();
-      setFormData({
-        title: "",
-        description: "",
-        slug: "",
-        cards: [],
-        footer: { title: "", description: "", ctaText: "", ctaLink: "" },
-      });
-      setCurrentPage(null);
+      setIsLoading(true);
+      if (selectedPoint) {
+        await pagesService.updateUniquePoint(selectedPoint._id, formData);
+        toast.success('Point updated successfully');
+      } else {
+        await pagesService.createUniquePoint(formData);
+        toast.success('Point created successfully');
+      }
+      setIsModalOpen(false);
+      setSelectedPoint(null);
+      setFormData({ title: '', description: '', icon: '' });
+      await fetchUniquePoints();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error saving page.");
+      toast.error(selectedPoint ? 'Failed to update point' : 'Failed to create point');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleEdit = (page) => {
-    setCurrentPage(page);
-    setFormData({
-      title: page.title || "",
-      description: page.description || "",
-      slug: page.slug || "",
-      cards: Array.isArray(page.cards) ? [...page.cards] : [],
-      footer: {
-        title: page.footer?.title || "",
-        description: page.footer?.description || "",
-        ctaText: page.footer?.ctaText || "",
-        ctaLink: page.footer?.ctaLink || "",
-      },
-    });
   };
 
   const handleDelete = async (id) => {
-    if (!token) {
-      toast.error("Please log in.");
-      return;
-    }
-    if (!window.confirm("Are you sure you want to delete this page?")) return;
-
-    try {
-      await axios.delete(`http://localhost:5000/api/why-gudmed/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Page deleted!");
-      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
-      await fetchPages();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error deleting page.");
+    if (window.confirm('Are you sure you want to delete this point?')) {
+      try {
+        setIsLoading(true);
+        await pagesService.deleteUniquePoint(id);
+        toast.success('Point deleted successfully');
+        await fetchUniquePoints();
+      } catch (err) {
+        toast.error('Failed to delete point');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const addCard = () => {
+  const handleEdit = (point) => {
+    setSelectedPoint(point);
     setFormData({
-      ...formData,
-      cards: [...formData.cards, { icon: "", title: "", description: "", points: [] }],
+      title: point.title,
+      description: point.description,
+      icon: point.icon,
     });
+    setIsModalOpen(true);
   };
 
-  const handleCardChange = (index, field, value) => {
-    const updatedCards = formData.cards.map((card, i) =>
-      i === index ? { ...card, [field]: value } : card
-    );
-    setFormData({ ...formData, cards: updatedCards });
-  };
-
-  const addPoint = (cardIndex) => {
-    const updatedCards = formData.cards.map((card, i) =>
-      i === cardIndex
-        ? { ...card, points: [...(card.points || []), { icon: "", text: "" }] }
-        : card
-    );
-    setFormData({ ...formData, cards: updatedCards });
-  };
-
-  const handlePointChange = (cardIndex, pointIndex, field, value) => {
-    const updatedCards = formData.cards.map((card, i) =>
-      i === cardIndex
-        ? {
-            ...card,
-            points: card.points.map((point, j) =>
-              j === pointIndex ? { ...point, [field]: value } : point
-            ),
-          }
-        : card
-    );
-    setFormData({ ...formData, cards: updatedCards });
-  };
-
-  const handleDeleteCard = (index) => {
-    if (!window.confirm("Are you sure you want to delete this card?")) return;
-    const updatedCards = formData.cards.filter((_, i) => i !== index);
-    setFormData({ ...formData, cards: updatedCards });
-  };
-
-  const handleDeletePoint = (cardIndex, pointIndex) => {
-    if (!window.confirm("Are you sure you want to delete this point?")) return;
-    const updatedCards = formData.cards.map((card, i) =>
-      i === cardIndex
-        ? { ...card, points: card.points.filter((_, j) => j !== pointIndex) }
-        : card
-    );
-    setFormData({ ...formData, cards: updatedCards });
-  };
+  const columns = [
+    {
+      header: 'Icon',
+      accessor: 'icon',
+      cell: (row) => <div className="text-2xl">{row.icon}</div>,
+    },
+    {
+      header: 'Title',
+      accessor: 'title',
+    },
+    {
+      header: 'Description',
+      accessor: 'description',
+      cell: (row) => (
+        <div className="max-w-md truncate">
+          {row.description}
+        </div>
+      ),
+    },
+    {
+      header: 'Actions',
+      accessor: 'actions',
+      cell: (row) => (
+        <div className="flex space-x-2">
+          <Button
+            variant="icon"
+            onClick={() => handleEdit(row)}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            <Edit className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="icon"
+            onClick={() => handleDelete(row._id)}
+            className="text-red-600 hover:text-red-800"
+          >
+            <Trash2 className="h-5 w-5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin - Why GudMed is Unique</h1>
-      <ToastContainer /> {/* Add ToastContainer for notifications */}
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Title"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
+    <DashboardLayout>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold text-gray-800">Why GudMed is Unique</h1>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setSelectedPoint(null);
+              setFormData({ title: '', description: '', icon: '' });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-5 w-5" />
+            Add New Point
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow">
+          <Table
+            columns={columns}
+            data={uniquePoints}
+            isLoading={isLoading}
+            className="w-full"
           />
         </div>
-        <div className="mb-4">
-          <textarea
-            placeholder="Description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Slug"
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <h2 className="text-xl font-semibold mb-2">Cards</h2>
-        {(formData.cards || []).map((card, cardIndex) => (
-          <div key={cardIndex} className="mb-4 p-4 border rounded">
-            <input
-              type="text"
-              placeholder="Icon (e.g., FaClock)"
-              value={card.icon}
-              onChange={(e) => handleCardChange(cardIndex, "icon", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="Title"
-              value={card.title}
-              onChange={(e) => handleCardChange(cardIndex, "title", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <textarea
-              placeholder="Description"
-              value={card.description}
-              onChange={(e) => handleCardChange(cardIndex, "description", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <h3 className="text-lg font-medium mb-2">Points</h3>
-            {(card.points || []).map((point, pointIndex) => (
-              <div key={pointIndex} className="flex space-x-2 mb-2">
-                <input
-                  type="text"
-                  placeholder="Point Icon (e.g., FaClock)"
-                  value={point.icon}
-                  onChange={(e) =>
-                    handlePointChange(cardIndex, pointIndex, "icon", e.target.value)
-                  }
-                  className="w-1/3 p-2 border rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="Point Text"
-                  value={point.text}
-                  onChange={(e) =>
-                    handlePointChange(cardIndex, pointIndex, "text", e.target.value)
-                  }
-                  className="w-2/3 p-2 border rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleDeletePoint(cardIndex, pointIndex)}
-                  className="bg-red-500 text-white p-1 rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addPoint(cardIndex)}
-              className="bg-blue-500 text-white p-1 rounded mb-2"
-            >
-              Add Point
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteCard(cardIndex)}
-              className="bg-red-500 text-white p-1 rounded self-end"
-            >
-              Delete Card
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={addCard}
-          className="bg-blue-500 text-white p-2 rounded mr-2"
+
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedPoint(null);
+            setFormData({ title: '', description: '', icon: '' });
+          }}
+          title={selectedPoint ? 'Edit Point' : 'Add New Point'}
         >
-          Add Card
-        </button>
-        <h2 className="text-xl font-semibold mb-2 mt-4">Footer</h2>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Footer Title"
-            value={formData.footer.title}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                footer: { ...formData.footer, title: e.target.value },
-              })
-            }
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        <div className="mb-4">
-          <textarea
-            placeholder="Footer Description"
-            value={formData.footer.description}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                footer: { ...formData.footer, description: e.target.value },
-              })
-            }
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="CTA Text"
-            value={formData.footer.ctaText}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                footer: { ...formData.footer, ctaText: e.target.value },
-              })
-            }
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="CTA Link"
-            value={formData.footer.ctaLink}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                footer: { ...formData.footer, ctaLink: e.target.value },
-              })
-            }
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        <button type="submit" className="bg-green-500 text-white p-2 rounded">
-          {currentPage ? "Update" : "Create"} Page
-        </button>
-      </form>
-      <h2 className="text-xl font-semibold mb-2">Existing Pages</h2>
-      <ul className="space-y-2">
-        {pages.map((page) => (
-          <li key={page._id} className="flex justify-between p-2 border rounded">
-            <span>{page.title || "Untitled"}</span>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <button
-                onClick={() => handleEdit(page)}
-                className="bg-yellow-500 text-white p-1 rounded mr-2"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(page._id)}
-                className="bg-red-500 text-white p-1 rounded"
-              >
-                Delete
-              </button>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+              <input
+                type="text"
+                value={formData.icon}
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter emoji or icon"
+                required
+              />
             </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter title"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter description"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedPoint(null);
+                  setFormData({ title: '', description: '', icon: '' });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                type="submit"
+                isLoading={isLoading}
+              >
+                {selectedPoint ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      </div>
+    </DashboardLayout>
   );
 };
 
-export default WhyGudMedisUnique;
+export default WhyGudMedisUniquePage;
