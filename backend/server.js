@@ -8,7 +8,7 @@ const routes = require('./routes');
 // Environment variables
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:3001';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://harshraj20031:Harsh732290@cluster0.jock5.mongodb.net/GudMed?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/gudmed';
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
