@@ -8,7 +8,7 @@ const routes = require('./routes');
 // Environment variables
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:3001';
-const MONGODB_URI = process.env.MONGODB_URI || 'your_local_mongodb_uri';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://harshraj20031:Harsh732290@cluster0.jock5.mongodb.net/GudMed?retryWrites=true&w=majority';
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -41,10 +41,14 @@ const connectDB = async (retries = 5) => {
         await mongoose.connect(MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 5000,
+            serverSelectionTimeoutMS: 10000,
             socketTimeoutMS: 45000,
+            family: 4,
+            retryWrites: true,
+            w: 'majority'
         });
-        console.log('Connected to MongoDB');
+        console.log('Connected to MongoDB successfully');
+        console.log('Database:', mongoose.connection.name);
     } catch (err) {
         console.error('MongoDB connection error:', err);
         if (retries > 0) {
@@ -56,13 +60,13 @@ const connectDB = async (retries = 5) => {
     }
 };
 
+// Initialize MongoDB connection
 connectDB();
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
-    // Handle client events
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
@@ -71,14 +75,11 @@ io.on('connection', (socket) => {
         console.error('Socket error:', error);
     });
 
-    // Custom events
     socket.on('contentUpdated', (data) => {
-        // Broadcast to all clients except sender
         socket.broadcast.emit('contentUpdated', data);
     });
 
     socket.on('adminUpdate', (data) => {
-        // Broadcast to all clients
         io.emit('contentChanged', data);
     });
 });
@@ -94,7 +95,8 @@ app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'healthy',
         environment: NODE_ENV,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
     });
 });
 
