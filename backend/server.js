@@ -35,15 +35,28 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log('Connected to MongoDB');
-}).catch(err => {
-    console.error('MongoDB connection error:', err);
-});
+// MongoDB Connection with retry logic
+const connectDB = async (retries = 5) => {
+    try {
+        await mongoose.connect(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
+        console.log('Connected to MongoDB');
+    } catch (err) {
+        console.error('MongoDB connection error:', err);
+        if (retries > 0) {
+            console.log(`Retrying connection... (${retries} attempts remaining)`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            return connectDB(retries - 1);
+        }
+        console.error('Failed to connect to MongoDB after multiple attempts');
+    }
+};
+
+connectDB();
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
