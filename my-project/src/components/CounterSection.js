@@ -37,7 +37,13 @@ const CounterSection = () => {
     const fetchData = async () => {
       try {
         const response = await api.get("/api/counter");
-        setCounters(response.data);
+        // Transform the data structure to match our frontend expectations
+        const transformedCounters = response.data.items.map(item => ({
+          title: item.label,
+          count: item.number,
+          icon: item.icon || getImageUrl("/images/default-icon.png")
+        }));
+        setCounters(transformedCounters);
         setIsVisible(false); // Reset visibility to re-trigger animation on update
         setLoading(false);
       } catch (error) {
@@ -49,7 +55,13 @@ const CounterSection = () => {
     fetchData();
 
     socket.on("counterUpdate", (data) => {
-      setCounters(data);
+      // Transform the data structure to match our frontend expectations
+      const transformedCounters = data.items.map(item => ({
+        title: item.label,
+        count: item.number,
+        icon: item.icon || getImageUrl("/images/default-icon.png")
+      }));
+      setCounters(transformedCounters);
       toast.success("Counter updated in real-time!");
     });
 
