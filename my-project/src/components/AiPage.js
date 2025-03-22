@@ -2,13 +2,10 @@ import React, { useState, useEffect } from "react";
 import { FaHospital, FaRobot, FaChartBar, FaRegPaperPlane, FaHeartbeat, FaMedkit, FaClipboardCheck } from "react-icons/fa";
 import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
-import io from "socket.io-client";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import api, { ENDPOINTS, config } from "../utils/api";
-
-// Create socket connection using the configured URL
-const socket = io(config.SOCKET_URL);
+import api, { ENDPOINTS } from "../utils/api";
+import { getSocket } from "../utils/socket";
 
 const iconMap = {
   FaHospital,
@@ -60,17 +57,18 @@ const AiPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const socket = getSocket();
 
   const fetchData = async () => {
     try {
       const response = await api.get(ENDPOINTS.AI_PAGES.LIST);
-      console.log('AI Page data:', response.data);
+      console.log('AI data:', response.data);
       setData(response.data.data[0] || null);
       setError(null);
     } catch (err) {
-      console.error("Error fetching AI page data:", err);
+      console.error("Error fetching AI data:", err);
       setError(err.message);
-      toast.error('Failed to load AI page content');
+      toast.error('Failed to load AI content');
     } finally {
       setLoading(false);
     }
@@ -79,28 +77,17 @@ const AiPage = () => {
   useEffect(() => {
     fetchData();
 
-    socket.on("connect", () => {
-      console.log("Connected to Socket.IO");
-    });
-
     socket.on("contentUpdated", (update) => {
       if (update.type === "ai" && update.data?.length > 0) {
         setData(update.data[0]);
-        toast.success("AI page updated!");
+        toast.success("AI content updated!");
       }
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("Socket.IO connection error:", err);
-      setError(`Socket.IO connection failed`);
     });
 
     return () => {
       socket.off("contentUpdated");
-      socket.off("connect");
-      socket.off("connect_error");
     };
-  }, []);
+  }, [socket]);
 
   if (loading) {
     return (
@@ -113,7 +100,7 @@ const AiPage = () => {
   if (error) {
     return (
       <div className="flex justify-center items-center py-12 bg-white">
-        <p className="text-red-500 text-lg">Error loading AI page content: {error}</p>
+        <p className="text-red-500 text-lg">Error loading AI content: {error}</p>
       </div>
     );
   }
@@ -121,7 +108,7 @@ const AiPage = () => {
   if (!data) {
     return (
       <div className="flex justify-center items-center py-12 bg-white">
-        <p className="text-gray-500 text-lg">AI page content is not available.</p>
+        <p className="text-gray-500 text-lg">AI content is not available.</p>
       </div>
     );
   }

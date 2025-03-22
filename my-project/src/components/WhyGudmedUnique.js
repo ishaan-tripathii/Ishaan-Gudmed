@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import * as FaIcons from "react-icons/fa";
-import io from "socket.io-client";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import api, { ENDPOINTS, config } from "../utils/api";
-
-// Create socket connection using the configured URL
-const socket = io(config.SOCKET_URL);
+import api, { ENDPOINTS } from "../utils/api";
+import { getSocket } from "../utils/socket";
 
 const WhyGudmedUnique = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const socket = getSocket();
 
   const fetchData = async () => {
     try {
@@ -32,10 +30,6 @@ const WhyGudmedUnique = () => {
   useEffect(() => {
     fetchData();
 
-    socket.on("connect", () => {
-      console.log("Connected to Socket.IO");
-    });
-
     socket.on("contentUpdated", (update) => {
       if (update.type === "why-gudmed" && update.data?.length > 0) {
         setData(update.data[0]);
@@ -43,17 +37,10 @@ const WhyGudmedUnique = () => {
       }
     });
 
-    socket.on("connect_error", (err) => {
-      console.error("Socket.IO connection error:", err);
-      setError(`Socket.IO connection failed`);
-    });
-
     return () => {
       socket.off("contentUpdated");
-      socket.off("connect");
-      socket.off("connect_error");
     };
-  }, []);
+  }, [socket]);
 
   const renderIcon = (iconString, size = "text-4xl") => {
     if (!iconString || typeof iconString !== "string") {

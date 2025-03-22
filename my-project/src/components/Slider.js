@@ -3,49 +3,17 @@ import AliceCarousel from "react-alice-carousel";
 import "react-alice-carousel/lib/alice-carousel.css";
 import "animate.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import { socket } from "../socket";
-import api from "../utils/api";
+import { usePagesContext } from "../contexts/PagesContext";
 
 const Slider = () => {
-  const [data, setData] = useState([]);
+  const { loading, error, getSliderPages } = usePagesContext();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const carouselRef = useRef();
   const [isMobile, setIsMobile] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
+  const carouselRef = useRef();
   const intervalRef = useRef(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get("/api/pages");
-        // Filter pages to get only slider pages
-        const sliderPages = response.data.filter(page => page.type === 'slider' || page.slug?.includes('slide'));
-        console.log('Fetched slider data:', sliderPages); // Debug log
-        setData(sliderPages);
-        setError(null);
-      } catch (error) {
-        console.error("Error fetching slider data:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    socket.on("pageUpdate", (updatedData) => {
-      // Filter pages to get only slider pages
-      const sliderPages = updatedData.filter(page => page.type === 'slider' || page.slug?.includes('slide'));
-      setData(sliderPages);
-    });
-
-    return () => {
-      socket.off("pageUpdate");
-    };
-  }, []);
+  const data = getSliderPages();
 
   // Handle screen size changes
   useEffect(() => {
@@ -193,10 +161,10 @@ const Slider = () => {
               >
                 <h1
                   className={`text-gray-800 text-center font-bold leading-tight ${(slide?.titleDesktop?.length || 0) > 100
-                      ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
-                      : (slide?.titleDesktop?.length || 0) > 60
-                        ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
-                        : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
+                    ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
+                    : (slide?.titleDesktop?.length || 0) > 60
+                      ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
+                      : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
                     }`}
                 >
                   {renderFormattedTitle(
