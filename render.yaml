@@ -2,7 +2,7 @@ services:
   # Backend Service
   - type: web
     name: gudmed-backend
-    rootDir: backend
+    rootDir: Server
     env: node
     buildCommand: npm install
     startCommand: npm start
