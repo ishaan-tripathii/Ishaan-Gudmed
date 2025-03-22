@@ -24,10 +24,25 @@ export const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://my-project.onrender.com', 'https://gudmed-admin.onrender.com'],
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://my-project.onrender.com',
+    'https://gudmed-admin.onrender.com',
+    'https://gudmed-frontend.onrender.com'
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Allow-Methods'
+  ],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 600
 };
