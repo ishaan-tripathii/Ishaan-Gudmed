@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
 import * as FaIcons from "react-icons/fa"; // Import all Fa icons dynamically
-import axios from "axios";
-import io from "socket.io-client";
+import { socket } from "../socket";
+import api from "../utils/api";
 import { Toaster, toast } from "react-hot-toast";
-
-const socket = io("http://localhost:5000");
 
 const AnimatedText = () => {
   const [animatedText, setAnimatedText] = useState({
@@ -24,24 +22,21 @@ const AnimatedText = () => {
 
   const fetchAnimatedText = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/animated-text");
+      const response = await api.get("/api/animated-text");
       setAnimatedText({
         redMarquee: response.data.redMarquee || animatedText.redMarquee,
         blackMarquee: response.data.blackMarquee || animatedText.blackMarquee,
       });
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching animated text data:", err);
+      console.error("Error fetching animated text:", err);
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAnimatedText();
-    socket.on("animatedTextUpdated", () => {
-      fetchAnimatedText();
-      toast.success("Animated text updated in real-time!");
-    });
+    socket.on("animatedTextUpdated", fetchAnimatedText);
     return () => socket.off("animatedTextUpdated");
   }, []);
 

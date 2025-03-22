@@ -1,57 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import * as FaIcons from "react-icons/fa";
-import io from "socket.io-client";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-const WHY_GUDMED_PORT = "5000";
-const socket = io(`http://localhost:${WHY_GUDMED_PORT}`, { reconnection: true });
+import { socket } from "../socket";
+import api from "../utils/api";
 
 const WhyGudmedUnique = () => {
-  const [pageData, setPageData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = async () => {
-    try {
-      const response = await fetch(`http://localhost:${WHY_GUDMED_PORT}/api/why-gudmed`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result = await response.json();
-      console.log("Fetched Why GudMed data:", result);
-      const data = result.success && result.data.length > 0 ? result.data[0] : null;
-      if (data && data.cards) {
-        data.cards = data.cards.map((card) => {
-          if (card.title === "Comprehensive Hospital Support" && !card.points) {
-            const points = [
-              { icon: "FaClock", text: "Quick Discharge Summaries: Reducing patient waiting times." },
-              { icon: "FaBrain", text: "AI-Driven Solutions: Enhancing operational excellence." },
-              { icon: "FaFileMedical", text: "MRD File Management: Capturing patient records across OPD and IPD." },
-              { icon: "FaCalendarCheck", text: "Post-Care Management: Timely medication reminders and follow-up scheduling." },
-            ];
-            return {
-              ...card,
-              description: "We empower hospitals with features designed to streamline operations:",
-              points,
-            };
-          }
-          return card;
-        });
-      }
-      setPageData(data);
-      setError(null);
-    } catch (err) {
-      console.error("Fetch error (WhyGudmedUnique):", err);
-      setError(`Failed to fetch data from port ${WHY_GUDMED_PORT}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.get("/api/why-gudmed");
+        setData(response.data);
+      } catch (error) {
+        console.error("Error fetching WhyGudMed data:", error);
+      }
+    };
+
     fetchData();
+
+    socket.on("whyGudMedUpdate", (updatedData) => {
+      setData(updatedData);
+    });
 
     socket.on("connect", () => {
       console.log("WhyGudMed: Connected to Socket.IO server");
@@ -85,7 +59,7 @@ const WhyGudmedUnique = () => {
             return card;
           }),
         };
-        setPageData(processedData);
+        setData(processedData);
         toast.success("Content updated in real-time!");
       } else {
         console.error("WhyGudMed: Invalid update data received:", updatedData);
@@ -95,7 +69,7 @@ const WhyGudmedUnique = () => {
 
     socket.on("connect_error", (err) => {
       console.error("WhyGudMed: Socket.IO connection error:", err);
-      setError(`Socket.IO failed to connect to port ${WHY_GUDMED_PORT}`);
+      setError("Failed to connect to server");
     });
 
     socket.on("disconnect", (reason) => {
@@ -103,6 +77,7 @@ const WhyGudmedUnique = () => {
     });
 
     return () => {
+      socket.off("whyGudMedUpdate");
       socket.off("whyGudMedUpdated");
       socket.off("connect");
       socket.off("connect_error");
@@ -120,7 +95,7 @@ const WhyGudmedUnique = () => {
 
   if (loading) return <div className="text-center py-10">Loading WhyGudmedUnique...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
-  if (!pageData || !pageData.cards) {
+  if (!data || !data.cards) {
     return <div className="text-center py-10">No WhyGudmedUnique data available</div>;
   }
 
@@ -134,7 +109,7 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          {pageData.title}
+          {data.title}
         </motion.h2>
         <motion.p
           className="block text-xl md:max-w-3xl font-medium text-gray-800 text-center mb-12 mx-auto"
@@ -142,10 +117,10 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1 }}
         >
-          {pageData.description}
+          {data.description}
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {pageData.cards.map((card, index) => (
+          {data.cards.map((card, index) => (
             <motion.div
               key={card._id}
               className="bg-white rounded-xl shadow-md p-6 hover:shadow-2xl transition-shadow duration-300 ease-in-out"

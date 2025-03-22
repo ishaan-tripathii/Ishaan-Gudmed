@@ -80,20 +80,12 @@ export const ENDPOINTS = {
 };
 
 // API Configuration
-const config = {
-  API_BASE_URL: 'http://localhost:5000',
-  getApiUrl: (endpoint) => `${config.API_BASE_URL}${endpoint}`,
-  getSocketUrl: () => {
-    const { SOCKET_URL } = getEnvironmentConfig();
-    return SOCKET_URL;
-  },
-  getHeaders: () => {
-    const token = localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-  }
-};
+const API_URL = process.env.REACT_APP_API_URL || 'https://gudmed-backend.onrender.com/api';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'https://gudmed-backend.onrender.com';
 
-export default config; 
+export const config = {
+  API_URL,
+  SOCKET_URL,
+  getApiUrl: (endpoint) => `${API_URL}${endpoint}`,
+  getSocketUrl: () => SOCKET_URL,
+}; 

@@ -3,9 +3,8 @@ import React, { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { Autoplay } from "swiper/modules";
-import io from "socket.io-client";
-
-const socket = io("http://localhost:5000", { reconnection: true });
+import { socket } from "../socket";
+import api from "../utils/api";
 
 const ClientLogo = ({ src, alt }) => (
   <div className="flex justify-center items-center mx-auto w-32 h-32 lg:w-40 lg:h-40">
@@ -25,10 +24,9 @@ const OurClient = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/clients");
-      const data = await response.json();
-      console.log("Fetched client settings:", data);
-      setSettings(data);
+      const response = await api.get("/api/clients");
+      console.log("Fetched client settings:", response.data);
+      setSettings(response.data);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching client settings:", err);

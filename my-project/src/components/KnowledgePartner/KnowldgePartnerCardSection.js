@@ -1,9 +1,8 @@
 // src/components/KnowledgePartnerCardSection.jsx
 import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
+import { socket } from "../../socket";
+import api from "../../utils/api";
 import OfferContentSection from "../Common/OfferContentSection";
-
-const socket = io("http://localhost:5000");
 
 const KnowledgePartnerCardSection = () => {
   const [settings, setSettings] = useState({
@@ -20,18 +19,16 @@ const KnowledgePartnerCardSection = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/knowledge-partners");
-      if (!response.ok) throw new Error("Failed to fetch settings");
-      const data = await response.json();
+      const response = await api.get("/api/knowledge-partners");
       // Ensure titles exist in the data, fallback to defaults if not
       setSettings({
-        ...data,
+        ...response.data,
         titles: {
-          weAre: data.titles?.weAre || "We Are !",
-          accredited: data.titles?.accredited || "Accredited",
-          knowledgePartners: data.titles?.knowledgePartners || "Our Knowledge Partners",
+          weAre: response.data.titles?.weAre || "We Are !",
+          accredited: response.data.titles?.accredited || "Accredited",
+          knowledgePartners: response.data.titles?.knowledgePartners || "Our Knowledge Partners",
         },
-        twoFactorsImage: data.twoFactorsImage || "", // Fallback for twoFactorsImage
+        twoFactorsImage: response.data.twoFactorsImage || "", // Fallback for twoFactorsImage
       });
       setLoading(false);
     } catch (err) {

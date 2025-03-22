@@ -4,6 +4,7 @@ import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { socket } from "../socket";
+import api from "../utils/api";
 
 const iconMap = {
   FaHospital,
@@ -52,30 +53,29 @@ const MotionCard = ({ icon, color, title, description }) => {
 };
 
 const TechnologyPage = () => {
-  const [technologyData, setTechnologyData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchTechnologyData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/technology");
-      if (response.data.success && response.data.data.length > 0) {
-        setTechnologyData(response.data.data[0]);
-      } else {
-        setTechnologyData(null);
-      }
-      setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || "Error fetching technology page data");
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchTechnologyData();
-    socket.on("contentUpdated", fetchTechnologyData);
-    return () => socket.off("contentUpdated");
+    const fetchData = async () => {
+      try {
+        const response = await api.get("/api/technology");
+        setData(response.data);
+      } catch (error) {
+        console.error("Error fetching technology data:", error);
+      }
+    };
+
+    fetchData();
+
+    socket.on("technologyUpdate", (updatedData) => {
+      setData(updatedData);
+    });
+
+    return () => {
+      socket.off("technologyUpdate");
+    };
   }, []);
 
   if (loading) {
@@ -94,7 +94,7 @@ const TechnologyPage = () => {
     );
   }
 
-  if (!technologyData) {
+  if (!data.length) {
     return (
       <div className="flex justify-center items-center h-screen bg-white">
         <p className="text-gray-500 text-lg">No technology page data found.</p>
@@ -106,14 +106,14 @@ const TechnologyPage = () => {
     <div className="bg-white min-h-screen py-12 px-6">
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1 className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500 mb-4 p-6">
-          {technologyData.title}
+          {data[0].title}
         </h1>
         <p className="text-gray-700 max-w-3xl mx-auto text-lg mt-0 md:-mt-4">
-          {technologyData.description}
+          {data[0].description}
         </p>
       </div>
 
-      {technologyData.sections && technologyData.sections.map((section, index) => (
+      {data[0].sections && data[0].sections.map((section, index) => (
         <section key={index} className="mb-10">
           <div className="container mx-auto px-2 lg:px-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8">

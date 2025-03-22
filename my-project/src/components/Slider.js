@@ -5,30 +5,35 @@ import "animate.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import axios from "axios";
 import { socket } from "../socket";
+import api from "../utils/api";
 
 const Slider = () => {
-  const [slides, setSlides] = useState([]);
+  const [data, setData] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const carouselRef = useRef();
   const [isMobile, setIsMobile] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const intervalRef = useRef(null);
 
-  // Fetch slides from the backend
-  const fetchSlides = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/pages");
-      setSlides(response.data);
-    } catch (error) {
-      console.error("Error fetching slides:", error);
-    }
-  };
-
-  // Setup slide fetching and real-time updates
   useEffect(() => {
-    fetchSlides();
-    socket.on("contentUpdated", fetchSlides);
-    return () => socket.off("contentUpdated");
+    const fetchData = async () => {
+      try {
+        const response = await api.get("/api/slider");
+        setData(response.data);
+      } catch (error) {
+        console.error("Error fetching slider data:", error);
+      }
+    };
+
+    fetchData();
+
+    socket.on("sliderUpdate", (updatedData) => {
+      setData(updatedData);
+    });
+
+    return () => {
+      socket.off("sliderUpdate");
+    };
   }, []);
 
   // Handle screen size changes
@@ -145,19 +150,18 @@ const Slider = () => {
             ref={carouselRef}
             {...carouselSettings}
             activeIndex={currentSlideIndex}
-            items={slides.map((slide, index) => (
+            items={data.map((slide, index) => (
               <div
                 key={index}
                 className="text-container animate__animated animate__slideInRight animate__faster"
               >
                 <h1
-                  className={`text-gray-800 text-center font-bold leading-tight ${
-                    (slide?.titleDesktop?.length || 0) > 100
+                  className={`text-gray-800 text-center font-bold leading-tight ${(slide?.titleDesktop?.length || 0) > 100
                       ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
                       : (slide?.titleDesktop?.length || 0) > 60
-                      ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
-                      : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
-                  }`}
+                        ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
+                        : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
+                    }`}
                 >
                   {renderFormattedTitle(
                     isMobile ? slide?.titleMobile : slide?.titleDesktop,

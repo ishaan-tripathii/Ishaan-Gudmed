@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-import io from "socket.io-client";
+import { socket } from "../socket";
+import api from "../utils/api";
 import { Toaster, toast } from "react-hot-toast";
-
-const socket = io("http://localhost:5000");
 
 const NewFooter = () => {
   const [footer, setFooter] = useState({
@@ -31,7 +29,7 @@ const NewFooter = () => {
 
   const fetchFooter = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/footer");
+      const response = await api.get("/api/footer");
       setFooter({
         copyright: response.data.copyright || footer.copyright,
         contact: response.data.contact || footer.contact,

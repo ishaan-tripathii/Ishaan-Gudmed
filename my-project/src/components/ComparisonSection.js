@@ -1,7 +1,7 @@
 // src/components/ComparisonSection.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import io from "socket.io-client";
+import { socket } from "../socket";
+import api from "../utils/api";
 import {
   DocumentDuplicateIcon,
   DocumentTextIcon,
@@ -13,8 +13,6 @@ import {
   ShieldCheckIcon,
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
-
-const socket = io("http://localhost:5000");
 
 const iconMap = {
   DocumentDuplicateIcon: DocumentDuplicateIcon,
@@ -37,7 +35,7 @@ const ComparisonSection = () => {
 
   const fetchComparison = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/comparison");
+      const response = await api.get("/api/comparison");
       setComparison({
         title: response.data.title || "GudMed vs Other Technologies",
         items: response.data.items || [],

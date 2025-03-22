@@ -4,6 +4,7 @@ import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { socket } from "../socket";
+import api from "../utils/api";
 
 const iconMap = {
   FaHospital,
@@ -52,46 +53,28 @@ const MotionCard = ({ icon, color, title, description }) => {
 };
 
 const AiPage = () => {
-  const [aiPageData, setAiPageData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchAiPageData = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/ai-pages");
-      const fetchedData = Array.isArray(response.data)
-        ? response.data[0]
-        : response.data.data && Array.isArray(response.data.data)
-        ? response.data.data[0]
-        : null;
-      setAiPageData(fetchedData);
+      const response = await api.get("/api/ai-pages");
+      setData(response.data);
       setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || "Error fetching AI page data");
+    } catch (error) {
+      console.error("Error fetching AI page data:", error);
+      setError(error.response?.data?.message || "Error fetching AI page data");
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAiPageData();
-    socket.on("aiPageUpdated", (updatedPage) => {
-      console.log("AiPage received aiPageUpdated:", updatedPage);
-      if (updatedPage.deleted) {
-        setAiPageData(null);
-      } else {
-        setAiPageData((prevData) => {
-          if (prevData && prevData._id === updatedPage._id) {
-            return updatedPage;
-          }
-          return prevData;
-        });
-      }
+    fetchData();
+    socket.on("aiPageUpdate", (updatedData) => {
+      setData(updatedData);
     });
-
-    return () => {
-      socket.off("aiPageUpdated");
-    };
+    return () => socket.off("aiPageUpdate");
   }, []);
 
   if (loading) {
@@ -110,7 +93,7 @@ const AiPage = () => {
     );
   }
 
-  if (!aiPageData) {
+  if (!data || data.length === 0) {
     return (
       <div className="flex justify-center items-center h-screen bg-white">
         <p className="text-gray-500 text-lg">No AI page data found.</p>
@@ -129,19 +112,19 @@ const AiPage = () => {
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1
           className="text-4xl font-bold text-[#2E4168] relative inline-block bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text leading-normal"
-          style={{ color: aiPageData.titleColor || '#000000' }}
+          style={{ color: data[0].titleColor || '#000000' }}
         >
-          {aiPageData.title}
+          {data[0].title}
           <div className="h-1 w-32 bg-[#2E4168] bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 absolute left-1/2 -translate-x-1/2 "></div>
-          
+
         </h1>
         <p className="text-gray-700 max-w-5xl mx-auto mt-8 text-lg mb-10 md:mx-4 xl:mx-auto">
-          {aiPageData.description}
+          {data[0].description}
         </p>
       </div>
 
-      {Array.isArray(aiPageData.sections) && aiPageData.sections.length > 0 ? (
-        aiPageData.sections.map((section, index) => (
+      {Array.isArray(data[0].sections) && data[0].sections.length > 0 ? (
+        data[0].sections.map((section, index) => (
           <section key={index} className="mb-10">
             <div className="container mx-auto px-2 lg:px-0">
               <div className={getGridClasses(section.cards?.length || 0)}>

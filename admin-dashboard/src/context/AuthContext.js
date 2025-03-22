@@ -1,59 +1,59 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext();
+const API_URL = process.env.REACT_APP_API_URL || 'https://gudmed-backend.onrender.com/api';
+
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
-  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (token) {
-      axios.get('http://localhost:5000/api/auth/user', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(response => setUser(response.data.user))
-      .catch(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken('');
-        setUser(null);
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/auth/user`, {
+        withCredentials: true
       });
+      setUser(response.data);
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-  }, [token]);
+  };
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-      if (response.data.success) {
-        setToken(response.data.token);
-        setUser(response.data.user);
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-      return response.data;
+      const response = await axios.post(`${API_URL}/auth/login`, { email, password }, {
+        withCredentials: true
+      });
+      setUser(response.data);
+      navigate('/dashboard');
     } catch (error) {
-      throw error.response?.data || { success: false, message: "Login failed" };
+      throw error.response?.data?.message || 'Login failed';
     }
   };
 
   const logout = async () => {
     try {
-      await axios.post('http://localhost:5000/api/auth/logout', {}, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.post(`${API_URL}/auth/logout`, {}, {
+        withCredentials: true
       });
-      setToken('');
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      return { success: true, message: 'Logged out successfully' };
+      navigate('/login');
     } catch (error) {
-      throw error.response?.data || { success: false, message: "Logout failed" };
+      console.error('Logout error:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { ReactCompareSlider, ReactCompareSliderImage } from "react-compare-slider";
-import axios from "axios";
-import io from "socket.io-client";
+import { socket } from "../socket";
+import api from "../utils/api";
 import { Toaster, toast } from "react-hot-toast";
-
-const socket = io("http://localhost:5000");
 
 const ImageSection = ({ title, beforeImage, afterImage }) => (
   <div className="w-full md:w-1/2 p-4 rounded-lg shadow-lg bg-white">
@@ -33,13 +31,13 @@ const ImageComparison = () => {
     sections: [
       {
         title: "In English",
-        beforeImage: "http://localhost:5000/images/compare-image.png",
-        afterImage: "http://localhost:5000/images/compare-image-english.png",
+        beforeImage: "/images/compare-image.png",
+        afterImage: "/images/compare-image-english.png",
       },
       {
         title: "हिन्दी में",
-        beforeImage: "http://localhost:5000/images/compare-image.png",
-        afterImage: "http://localhost:5000/images/compare-image-hindi.png",
+        beforeImage: "/images/compare-image.png",
+        afterImage: "/images/compare-image-hindi.png",
       },
     ],
   });
@@ -47,7 +45,7 @@ const ImageComparison = () => {
 
   const fetchImageComparison = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/image-comparison");
+      const response = await api.get("/api/image-comparison");
       setImageComparison({
         heading: response.data.heading || "Sample Prescription",
         description: response.data.description || "Move the slider left and right to see the magic!",

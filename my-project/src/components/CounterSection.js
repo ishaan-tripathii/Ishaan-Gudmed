@@ -1,64 +1,61 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import io from "socket.io-client";
+import { motion } from "framer-motion";
+import { socket } from "../socket";
+import api, { getImageUrl } from "../utils/api";
 import CountUp from "react-countup";
 import BreadImage from "../img/bread-bg.jpg";
 import { Toaster, toast } from "react-hot-toast";
 
-const socket = io("http://localhost:5000");
-
 const CounterSection = () => {
-  const [counter, setCounter] = useState({
-    title: "Our Impact",
-    items: [
-      {
-        icon: "http://localhost:5000/images/prescription.png",
-        number: 2650627,
-        label: "Prescriptions Served",
-      },
-      {
-        icon: "http://localhost:5000/images/fa-file-prescription.jpg",
-        number: 877645,
-        label: "Hindi Prescriptions Served",
-      },
-      {
-        icon: "http://localhost:5000/images/doctor-image.jpg",
-        number: 3850,
-        label: "Doctors With Us",
-      },
-      {
-        icon: "http://localhost:5000/images/patient-image.jpg",
-        number: 180000,
-        label: "Happy Patients",
-      },
-    ],
-  });
+  const [counters, setCounters] = useState([
+    {
+      title: "Prescriptions",
+      count: 0,
+      icon: getImageUrl("/images/prescription.png"),
+    },
+    {
+      title: "Files",
+      count: 0,
+      icon: getImageUrl("/images/fa-file-prescription.jpg"),
+    },
+    {
+      title: "Doctors",
+      count: 0,
+      icon: getImageUrl("/images/doctor-image.jpg"),
+    },
+    {
+      title: "Patients",
+      count: 0,
+      icon: getImageUrl("/images/patient-image.jpg"),
+    },
+  ]);
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const sectionRef = useRef(null);
 
-  const fetchCounter = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/counter");
-      setCounter({
-        title: response.data.title || "Our Impact",
-        items: response.data.items || counter.items,
-      });
-      setIsVisible(false); // Reset visibility to re-trigger animation on update
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching counter data:", err);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchCounter();
-    socket.on("counterUpdated", () => {
-      fetchCounter();
+    const fetchData = async () => {
+      try {
+        const response = await api.get("/api/counter");
+        setCounters(response.data);
+        setIsVisible(false); // Reset visibility to re-trigger animation on update
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching counter data:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    socket.on("counterUpdate", (data) => {
+      setCounters(data);
       toast.success("Counter updated in real-time!");
     });
-    return () => socket.off("counterUpdated");
+
+    return () => {
+      socket.off("counterUpdate");
+    };
   }, []);
 
   useEffect(() => {
@@ -115,28 +112,28 @@ const CounterSection = () => {
       <div className="absolute inset-0 bg-[#2E4168] opacity-80"></div>
       {/* Content Layer */}
       <div className="relative z-10 container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8 text-center text-white">
-        {counter.items.map((stat, index) => (
+        {counters.map((stat, index) => (
           <div key={index} className="group">
             <div className="w-20 h-20 md:w-24 md:h-24 mx-auto flex items-center justify-center rounded-full bg-[#2E4168] group-hover:bg-white border-2 border-transparent border-white group-hover:border-customBlue transition-all duration-300">
               <div className="text-white group-hover:text-[#2E4168] group-hover:bg-transparent hover:text-white">
-                <img src={stat.icon} alt={`${stat.label} Icon`} className="w-10 h-10" />
+                <img src={stat.icon} alt={`${stat.title} Icon`} className="w-10 h-10" />
               </div>
             </div>
             <div className="text-4xl md:text-5xl font-bold mt-4">
               {isVisible ? (
                 <CountUp
                   start={0}
-                  end={stat.number}
+                  end={stat.count}
                   duration={5}
                   separator=","
                   redraw={true}
-                  key={`${stat.number}-${isVisible}`} // Unique key to force re-render
+                  key={`${stat.count}-${isVisible}`} // Unique key to force re-render
                 />
               ) : (
                 "0"
               )}
             </div>
-            <p className="text-base md:text-lg mt-2">{stat.label}</p>
+            <p className="text-base md:text-lg mt-2">{stat.title}</p>
           </div>
         ))}
       </div>

@@ -26,12 +26,23 @@ export const app = express();
 const corsOptions = {
   origin: ['http://localhost:3000', 'http://localhost:3001', 'https://my-project.onrender.com', 'https://gudmed-admin.onrender.com'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Add security headers middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
