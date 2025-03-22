@@ -18,8 +18,10 @@ const Slider = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get("/api/slider");
-        setData(response.data);
+        const response = await api.get("/api/pages");
+        // Filter pages to get only slider pages
+        const sliderPages = response.data.filter(page => page.type === 'slider');
+        setData(sliderPages);
       } catch (error) {
         console.error("Error fetching slider data:", error);
       }
@@ -27,12 +29,14 @@ const Slider = () => {
 
     fetchData();
 
-    socket.on("sliderUpdate", (updatedData) => {
-      setData(updatedData);
+    socket.on("pageUpdate", (updatedData) => {
+      // Filter pages to get only slider pages
+      const sliderPages = updatedData.filter(page => page.type === 'slider');
+      setData(sliderPages);
     });
 
     return () => {
-      socket.off("sliderUpdate");
+      socket.off("pageUpdate");
     };
   }, []);
 
@@ -157,10 +161,10 @@ const Slider = () => {
               >
                 <h1
                   className={`text-gray-800 text-center font-bold leading-tight ${(slide?.titleDesktop?.length || 0) > 100
-                      ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
-                      : (slide?.titleDesktop?.length || 0) > 60
-                        ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
-                        : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
+                    ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
+                    : (slide?.titleDesktop?.length || 0) > 60
+                      ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
+                      : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
                     }`}
                 >
                   {renderFormattedTitle(
