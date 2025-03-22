@@ -21,14 +21,6 @@ services:
         value: https://gudmed-admin.onrender.com
     healthCheckPath: /api/health
     autoDeploy: true
-    headers:
-      - path: /*
-        name: Access-Control-Allow-Origin
-        value: "*"
-    routes:
-      - type: rewrite
-        source: /socket.io/*
-        destination: /socket.io/$1
 
   # Frontend Service
   - type: web
