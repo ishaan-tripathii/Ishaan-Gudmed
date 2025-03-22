@@ -1,6 +1,7 @@
 import 'dotenv/config'; // Add this at the top to load .env variables
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
 import connectDB from './config/db.js';
 import { initSocket } from './services/socket.js';
 import pageRoutes from './routes/pages.js';
@@ -81,8 +82,11 @@ app.get('/', (req, res) => {
   });
 });
 
-// Initialize Socket.IO
-const server = initSocket(app);
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.IO with HTTP server
+const server = initSocket(httpServer);
 
 // Start server
 const PORT = process.env.PORT || 5000;
