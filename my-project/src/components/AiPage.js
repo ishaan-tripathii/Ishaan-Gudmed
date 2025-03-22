@@ -112,38 +112,37 @@ const AiPage = () => {
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1
           className="text-4xl font-bold text-[#2E4168] relative inline-block bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text leading-normal"
-          style={{ color: data[0].titleColor || '#000000' }}
+          style={{ color: data?.[0]?.titleColor || '#2E4168' }}
         >
-          {data[0].title}
+          {data?.[0]?.title || 'AI in Healthcare'}
           <div className="h-1 w-32 bg-[#2E4168] bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 absolute left-1/2 -translate-x-1/2 "></div>
-
         </h1>
         <p className="text-gray-700 max-w-5xl mx-auto mt-8 text-lg mb-10 md:mx-4 xl:mx-auto">
-          {data[0].description}
+          {data?.[0]?.description || 'Discover how artificial intelligence is revolutionizing healthcare delivery and patient care.'}
         </p>
       </div>
 
-      {Array.isArray(data[0].sections) && data[0].sections.length > 0 ? (
+      {Array.isArray(data?.[0]?.sections) && data[0].sections.length > 0 ? (
         data[0].sections.map((section, index) => (
           <section key={index} className="mb-10">
             <div className="container mx-auto px-2 lg:px-0">
-              <div className={getGridClasses(section.cards?.length || 0)}>
-                {Array.isArray(section.cards) && section.cards.length > 0 ? (
+              <div className={getGridClasses(section?.cards?.length || 0)}>
+                {Array.isArray(section?.cards) && section.cards.length > 0 ? (
                   section.cards.map((card, cardIndex) => (
                     section.cardType === "highlight" ? (
                       <HighlightCard
                         key={cardIndex}
-                        icon={card.icon}
-                        title={card.title}
-                        description={card.description}
+                        icon={card?.icon}
+                        title={card?.title}
+                        description={card?.description}
                       />
                     ) : (
                       <MotionCard
                         key={cardIndex}
-                        icon={card.icon}
-                        color={card.color}
-                        title={card.title}
-                        description={card.description}
+                        icon={card?.icon}
+                        color={card?.color}
+                        title={card?.title}
+                        description={card?.description}
                       />
                     )
                   ))
