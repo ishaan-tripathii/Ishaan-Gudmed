@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { FaHospital, FaRobot, FaChartBar, FaRegPaperPlane, FaHeartbeat, FaMedkit, FaClipboardCheck } from "react-icons/fa";
 import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { socket } from "../socket";
 import api from "../utils/api";
 
@@ -59,22 +58,27 @@ const AiPage = () => {
 
   const fetchData = async () => {
     try {
-      const response = await api.get("/api/ai-pages");
-      setData(response.data);
-      setLoading(false);
+      setLoading(true);
+      const response = await api.get("/api/pages");
+      // Filter for AI page
+      const aiPage = response.data.data.find(page => page.slug === "artificial intelligence");
+      setData(aiPage ? [aiPage] : []);
+      setError(null);
     } catch (error) {
       console.error("Error fetching AI page data:", error);
-      setError(error.response?.data?.message || "Error fetching AI page data");
+      setError(error.message);
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-    socket.on("aiPageUpdate", (updatedData) => {
-      setData(updatedData);
+    socket.on("pageUpdate", (updatedData) => {
+      const aiPage = updatedData.find(page => page.slug === "artificial intelligence");
+      setData(aiPage ? [aiPage] : []);
     });
-    return () => socket.off("aiPageUpdate");
+    return () => socket.off("pageUpdate");
   }, []);
 
   if (loading) {
@@ -112,17 +116,17 @@ const AiPage = () => {
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1
           className="text-4xl font-bold text-[#2E4168] relative inline-block bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text leading-normal"
-          style={{ color: data?.[0]?.titleColor || '#2E4168' }}
+          style={{ color: data[0]?.titleColor || '#2E4168' }}
         >
-          {data?.[0]?.title || 'AI in Healthcare'}
+          {data[0]?.title || 'AI in Healthcare'}
           <div className="h-1 w-32 bg-[#2E4168] bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 absolute left-1/2 -translate-x-1/2 "></div>
         </h1>
         <p className="text-gray-700 max-w-5xl mx-auto mt-8 text-lg mb-10 md:mx-4 xl:mx-auto">
-          {data?.[0]?.description || 'Discover how artificial intelligence is revolutionizing healthcare delivery and patient care.'}
+          {data[0]?.description || 'Discover how artificial intelligence is revolutionizing healthcare delivery and patient care.'}
         </p>
       </div>
 
-      {Array.isArray(data?.[0]?.sections) && data[0].sections.length > 0 ? (
+      {Array.isArray(data[0]?.sections) && data[0].sections.length > 0 ? (
         data[0].sections.map((section, index) => (
           <section key={index} className="mb-10">
             <div className="container mx-auto px-2 lg:px-0">

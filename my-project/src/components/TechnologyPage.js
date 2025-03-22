@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { FaHospital, FaRobot, FaChartBar, FaRegPaperPlane, FaHeartbeat, FaMedkit, FaClipboardCheck } from "react-icons/fa";
 import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { socket } from "../socket";
 import api from "../utils/api";
 
@@ -41,7 +40,7 @@ const MotionCard = ({ icon, color, title, description }) => {
       {icon && (
         <div
           className="flex items-center justify-center mb-6 p-4 rounded-full"
-          style={{ backgroundColor: color || "#E5E7EB" }} // Use color from backend, fallback to bg-gray-200
+          style={{ backgroundColor: color || "#E5E7EB" }}
         >
           <Icon className="text-white text-5xl" />
         </div>
@@ -60,21 +59,29 @@ const TechnologyPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get("/api/technology");
-        setData(response.data);
+        setLoading(true);
+        const response = await api.get("/api/pages");
+        // Filter for technology page
+        const technologyPage = response.data.data.find(page => page.slug === "gudmed's technology");
+        setData(technologyPage ? [technologyPage] : []);
+        setError(null);
       } catch (error) {
         console.error("Error fetching technology data:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
 
-    socket.on("technologyUpdate", (updatedData) => {
-      setData(updatedData);
+    socket.on("pageUpdate", (updatedData) => {
+      const technologyPage = updatedData.find(page => page.slug === "gudmed's technology");
+      setData(technologyPage ? [technologyPage] : []);
     });
 
     return () => {
-      socket.off("technologyUpdate");
+      socket.off("pageUpdate");
     };
   }, []);
 
@@ -129,7 +136,7 @@ const TechnologyPage = () => {
                   <MotionCard
                     key={cardIndex}
                     icon={card.icon}
-                    color={card.color} // Pass the color field for background
+                    color={card.color}
                     title={card.title}
                     description={card.description}
                   />

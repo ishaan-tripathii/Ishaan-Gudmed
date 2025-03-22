@@ -14,17 +14,25 @@ const WhyGudmedUnique = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get("/api/why-gudmed");
-        setData(response.data);
+        setLoading(true);
+        const response = await api.get("/api/pages");
+        // Filter for WhyGudmedUnique page
+        const uniquePage = response.data.data.find(page => page.slug === "why gudmed is unique ?bnvb");
+        setData(uniquePage ? [uniquePage] : []);
+        setError(null);
       } catch (error) {
         console.error("Error fetching WhyGudMed data:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
 
-    socket.on("whyGudMedUpdate", (updatedData) => {
-      setData(updatedData);
+    socket.on("pageUpdate", (updatedData) => {
+      const uniquePage = updatedData.find(page => page.slug === "why gudmed is unique ?bnvb");
+      setData(uniquePage ? [uniquePage] : []);
     });
 
     socket.on("connect", () => {
@@ -77,7 +85,7 @@ const WhyGudmedUnique = () => {
     });
 
     return () => {
-      socket.off("whyGudMedUpdate");
+      socket.off("pageUpdate");
       socket.off("whyGudMedUpdated");
       socket.off("connect");
       socket.off("connect_error");
@@ -95,7 +103,7 @@ const WhyGudmedUnique = () => {
 
   if (loading) return <div className="text-center py-10">Loading WhyGudmedUnique...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
-  if (!data || !data.cards) {
+  if (!data || data.length === 0) {
     return <div className="text-center py-10">No WhyGudmedUnique data available</div>;
   }
 
@@ -109,7 +117,7 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          {data.title}
+          {data[0].title}
         </motion.h2>
         <motion.p
           className="block text-xl md:max-w-3xl font-medium text-gray-800 text-center mb-12 mx-auto"
@@ -117,10 +125,10 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1 }}
         >
-          {data.description}
+          {data[0].description}
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {data.cards.map((card, index) => (
+          {data[0].cards.map((card, index) => (
             <motion.div
               key={card._id}
               className="bg-white rounded-xl shadow-md p-6 hover:shadow-2xl transition-shadow duration-300 ease-in-out"
