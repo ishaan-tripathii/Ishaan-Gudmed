@@ -23,9 +23,10 @@ services:
     autoDeploy: true
 
   # Frontend Service
-  - type: static
+  - type: web
     name: my-project
     rootDir: my-project
+    env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
@@ -45,9 +46,10 @@ services:
         destination: /index.html
 
   # Admin Dashboard Service
-  - type: static
+  - type: web
     name: gudmed-admin
     rootDir: admin-dashboard
+    env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
