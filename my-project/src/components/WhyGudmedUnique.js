@@ -1,95 +1,57 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import * as FaIcons from "react-icons/fa";
+import io from "socket.io-client";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { socket } from "../socket";
-import api from "../utils/api";
+import api, { ENDPOINTS, config } from "../utils/api";
+
+// Create socket connection using the configured URL
+const socket = io(config.SOCKET_URL);
 
 const WhyGudmedUnique = () => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get("/api/pages");
-        // Filter for WhyGudmedUnique page
-        const uniquePage = response.data.data.find(page => page.slug === "why gudmed is unique ?bnvb");
-        setData(uniquePage ? [uniquePage] : []);
-        setError(null);
-      } catch (error) {
-        console.error("Error fetching WhyGudMed data:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      const response = await api.get(ENDPOINTS.WHY_GUDMED.LIST);
+      console.log('Why Gudmed Unique data:', response.data);
+      setData(response.data.data[0] || null);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching Why Gudmed Unique data:", err);
+      setError(err.message);
+      toast.error('Failed to load Why Gudmed Unique content');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
 
-    socket.on("pageUpdate", (updatedData) => {
-      const uniquePage = updatedData.find(page => page.slug === "why gudmed is unique ?bnvb");
-      setData(uniquePage ? [uniquePage] : []);
-    });
-
     socket.on("connect", () => {
-      console.log("WhyGudMed: Connected to Socket.IO server");
+      console.log("Connected to Socket.IO");
     });
 
-    socket.on("whyGudMedUpdated", (updatedData) => {
-      console.log("WhyGudMed: Received update event:", updatedData);
-      if (updatedData.deleted) {
-        console.log("WhyGudMed: Page was deleted, refetching data...");
-        fetchData();
-        return;
-      }
-
-      if (updatedData && updatedData.cards) {
-        const processedData = {
-          ...updatedData,
-          cards: updatedData.cards.map((card) => {
-            if (card.title === "Comprehensive Hospital Support" && !card.points) {
-              const points = [
-                { icon: "FaClock", text: "Quick Discharge Summaries: Reducing patient waiting times." },
-                { icon: "FaBrain", text: "AI-Driven Solutions: Enhancing operational excellence." },
-                { icon: "FaFileMedical", text: "MRD File Management: Capturing patient records across OPD and IPD." },
-                { icon: "FaCalendarCheck", text: "Post-Care Management: Timely medication reminders and follow-up scheduling." },
-              ];
-              return {
-                ...card,
-                description: "We empower hospitals with features designed to streamline operations:",
-                points,
-              };
-            }
-            return card;
-          }),
-        };
-        setData(processedData);
-        toast.success("Content updated in real-time!");
-      } else {
-        console.error("WhyGudMed: Invalid update data received:", updatedData);
-        fetchData();
+    socket.on("contentUpdated", (update) => {
+      if (update.type === "why-gudmed" && update.data?.length > 0) {
+        setData(update.data[0]);
+        toast.success("Why Gudmed Unique updated!");
       }
     });
 
     socket.on("connect_error", (err) => {
-      console.error("WhyGudMed: Socket.IO connection error:", err);
-      setError("Failed to connect to server");
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("WhyGudMed: Socket.IO disconnected:", reason);
+      console.error("Socket.IO connection error:", err);
+      setError(`Socket.IO connection failed`);
     });
 
     return () => {
-      socket.off("pageUpdate");
-      socket.off("whyGudMedUpdated");
+      socket.off("contentUpdated");
       socket.off("connect");
       socket.off("connect_error");
-      socket.off("disconnect");
     };
   }, []);
 
@@ -101,10 +63,28 @@ const WhyGudmedUnique = () => {
     return <IconComponent className={`text-blue-600 ${size} mb-3`} />;
   };
 
-  if (loading) return <div className="text-center py-10">Loading WhyGudmedUnique...</div>;
-  if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
-  if (!data || data.length === 0) {
-    return <div className="text-center py-10">No WhyGudmedUnique data available</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12 bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center py-12 bg-white">
+        <p className="text-red-500 text-lg">Error loading Why Gudmed Unique content: {error}</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex justify-center items-center py-12 bg-white">
+        <p className="text-gray-500 text-lg">Why Gudmed Unique content is not available.</p>
+      </div>
+    );
   }
 
   return (
@@ -117,7 +97,7 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          {data[0].title}
+          {data.title}
         </motion.h2>
         <motion.p
           className="block text-xl md:max-w-3xl font-medium text-gray-800 text-center mb-12 mx-auto"
@@ -125,17 +105,17 @@ const WhyGudmedUnique = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1 }}
         >
-          {data[0].description}
+          {data.description}
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {data[0].cards.map((card, index) => (
+          {data.cards && data.cards.map((card, index) => (
             <motion.div
               key={card._id}
               className="bg-white rounded-xl shadow-md p-6 hover:shadow-2xl transition-shadow duration-300 ease-in-out"
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0, delay: index * 0.1 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <div className="flex flex-col items-center text-center">
                 {renderIcon(card.icon, "text-4xl")}

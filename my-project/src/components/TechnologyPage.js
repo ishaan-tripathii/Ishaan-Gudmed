@@ -62,7 +62,7 @@ const TechnologyPage = () => {
         setLoading(true);
         const response = await api.get("/api/pages");
         // Filter for technology page
-        const technologyPage = response.data.data.find(page => page.slug === "gudmed's technology");
+        const technologyPage = response.data.find(page => page.slug === "gudmed's technology");
         setData(technologyPage ? [technologyPage] : []);
         setError(null);
       } catch (error) {
