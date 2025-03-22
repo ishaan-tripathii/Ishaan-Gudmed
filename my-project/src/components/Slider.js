@@ -3,13 +3,14 @@ import AliceCarousel from "react-alice-carousel";
 import "react-alice-carousel/lib/alice-carousel.css";
 import "animate.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import axios from "axios";
 import { socket } from "../socket";
 import api from "../utils/api";
 
 const Slider = () => {
   const [data, setData] = useState([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const carouselRef = useRef();
   const [isMobile, setIsMobile] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
@@ -18,12 +19,18 @@ const Slider = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const response = await api.get("/api/pages");
         // Filter pages to get only slider pages
-        const sliderPages = response.data.filter(page => page.type === 'slider');
+        const sliderPages = response.data.filter(page => page.type === 'slider' || page.slug?.includes('slide'));
+        console.log('Fetched slider data:', sliderPages); // Debug log
         setData(sliderPages);
+        setError(null);
       } catch (error) {
         console.error("Error fetching slider data:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -31,7 +38,7 @@ const Slider = () => {
 
     socket.on("pageUpdate", (updatedData) => {
       // Filter pages to get only slider pages
-      const sliderPages = updatedData.filter(page => page.type === 'slider');
+      const sliderPages = updatedData.filter(page => page.type === 'slider' || page.slug?.includes('slide'));
       setData(sliderPages);
     });
 
@@ -52,14 +59,14 @@ const Slider = () => {
   useEffect(() => {
     const startAutoSlide = () => {
       intervalRef.current = setInterval(() => {
-        if (!isClicked) {
+        if (!isClicked && data.length > 1) {
           carouselRef.current?.slideNext();
         }
       }, 5000);
     };
     startAutoSlide();
     return () => clearInterval(intervalRef.current);
-  }, [isClicked]);
+  }, [isClicked, data.length]);
 
   // Handle manual interaction
   const handleClick = () => {
@@ -70,7 +77,7 @@ const Slider = () => {
   const handleMouseUp = () => {
     setIsClicked(false);
     intervalRef.current = setInterval(() => {
-      if (!isClicked) {
+      if (!isClicked && data.length > 1) {
         carouselRef.current?.slideNext();
       }
     }, 5000);
@@ -82,7 +89,7 @@ const Slider = () => {
   // Carousel settings
   const carouselSettings = {
     autoPlay: false,
-    infinite: true,
+    infinite: data.length > 1,
     disableButtonsControls: true,
     disableDotsControls: true,
     onSlideChanged: (e) => setCurrentSlideIndex(e.item),
@@ -95,16 +102,16 @@ const Slider = () => {
 
   // Render title with gradient for specified words
   const renderTitle = (title, gradientWords, gradientClass) => {
-    const lines = (title || "").split("\n"); // Split by line breaks first
+    if (!title) return null;
+    const lines = title.split("\n");
     const gradientWordsLower = (gradientWords || []).map((word) =>
       word.toLowerCase().trim()
     );
 
-    // Flatten lines into words, splitting by spaces within each line
     const allWords = lines.flatMap((line) => line.trim().split(" ").filter(Boolean));
 
     return allWords.map((word, index) => {
-      const cleanWord = word.toLowerCase().trim().replace(/[.,!?]/g, ""); // Normalize word
+      const cleanWord = word.toLowerCase().trim().replace(/[.,!?]/g, "");
       const isGradientWord = gradientWordsLower.some(
         (gradientWord) => cleanWord === gradientWord
       );
@@ -121,7 +128,8 @@ const Slider = () => {
 
   // Render formatted title with line breaks
   const renderFormattedTitle = (title, gradientWords, gradientClass) => {
-    const safeTitle = title || ""; // Default to empty string if undefined
+    if (!title) return null;
+    const safeTitle = title;
     if (isMobile) {
       return safeTitle
         .split(/<br\s*\/?>/)
@@ -142,6 +150,30 @@ const Slider = () => {
       ));
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[400px] bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-[400px] bg-white">
+        <p className="text-red-500 text-lg">Error loading slider: {error}</p>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-[400px] bg-white">
+        <p className="text-gray-500 text-lg">No slider content available.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center bg-white">
       <div
@@ -161,10 +193,10 @@ const Slider = () => {
               >
                 <h1
                   className={`text-gray-800 text-center font-bold leading-tight ${(slide?.titleDesktop?.length || 0) > 100
-                    ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
-                    : (slide?.titleDesktop?.length || 0) > 60
-                      ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
-                      : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
+                      ? "text-[1.5rem] sm:text-3xl lg:text-[4.6rem] md:text-2rem"
+                      : (slide?.titleDesktop?.length || 0) > 60
+                        ? "mt-10 md:mt-0 text-[1.6rem] sm:text-4xl lg:text-7xl"
+                        : "text-5xl sm:text-5xl lg:text-8xl ipad-pro:text-[3rem] fold:text-[2rem] ipad-pro:leading-snug fold:leading-snug"
                     }`}
                 >
                   {renderFormattedTitle(
@@ -192,18 +224,22 @@ const Slider = () => {
             ))}
           />
         </div>
-        <button
-          onClick={handlePrev}
-          className="absolute left-4 sm:left-8 top-[15rem] md:top-1/2 transform -translate-y-1/2 bg-[#2E4168] w-12 h-12 sm:w-14 sm:h-14 rounded-full text-white hover:bg-customDark shadow-lg flex items-center justify-center transition-all duration-300 z-50"
-        >
-          <FaChevronLeft size={24} />
-        </button>
-        <button
-          onClick={handleNext}
-          className="absolute right-4 sm:right-8 top-[15rem] md:top-1/2 transform -translate-y-1/2 bg-[#2E4168] w-12 h-12 sm:w-14 sm:h-14 rounded-full text-white hover:bg-customDark shadow-lg flex items-center justify-center transition-all duration-300 z-50"
-        >
-          <FaChevronRight size={24} />
-        </button>
+        {data.length > 1 && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute left-4 sm:left-8 top-[15rem] md:top-1/2 transform -translate-y-1/2 bg-[#2E4168] w-12 h-12 sm:w-14 sm:h-14 rounded-full text-white hover:bg-customDark shadow-lg flex items-center justify-center transition-all duration-300 z-50"
+            >
+              <FaChevronLeft size={24} />
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-4 sm:right-8 top-[15rem] md:top-1/2 transform -translate-y-1/2 bg-[#2E4168] w-12 h-12 sm:w-14 sm:h-14 rounded-full text-white hover:bg-customDark shadow-lg flex items-center justify-center transition-all duration-300 z-50"
+            >
+              <FaChevronRight size={24} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
