@@ -16,9 +16,9 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
-        value: https://gudmed.vercel.app
+        value: https://gudmed-frontend.onrender.com
       - key: ADMIN_URL
-        value: https://gudmed-admin.vercel.app
+        value: https://gudmed-admin.onrender.com
     healthCheckPath: /api/health
     autoDeploy: true
     headers:
