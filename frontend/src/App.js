@@ -8,7 +8,8 @@ function App() {
         <div className="App">
             <Toaster position="top-center" />
             <Routes>
-                {/* Add your routes here */}
+                <Route path="/" element={<div className="welcome">Welcome to Gudmed</div>} />
+                <Route path="*" element={<div className="not-found">404 - Page Not Found</div>} />
             </Routes>
         </div>
     );
