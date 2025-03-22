@@ -16,7 +16,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
-        value: https://gudmed-frontend.onrender.com
+        value: https://my-project.onrender.com
       - key: ADMIN_URL
         value: https://gudmed-admin.onrender.com
     healthCheckPath: /api/health
@@ -32,8 +32,8 @@ services:
 
   # Frontend Service
   - type: web
-    name: gudmed-frontend
-    rootDir: frontend
+    name: my-project
+    rootDir: my-project
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
