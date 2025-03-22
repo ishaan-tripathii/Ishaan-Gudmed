@@ -17,6 +17,7 @@ import animatedTextRoutes from './routes/animatedTextRoutes.js';
 import imageComparisonRoutes from './routes/imageComparisonRoutes.js';
 import footerRoutes from './routes/footerRoutes.js';
 import whyGudMedRoutes from './routes/WhyGudMedisUniqueRoutes.js';
+import mongoose from 'mongoose';
 
 export const app = express();
 
@@ -30,6 +31,28 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const dbState = mongoose.connection.readyState;
+    const isConnected = dbState === 1;
+
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      mongodb: isConnected ? 'connected' : 'disconnected',
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Route middleware
 app.use('/api/pages', pageRoutes);
@@ -47,21 +70,24 @@ app.use('/api/image-comparison', imageComparisonRoutes);
 app.use('/api/footer', footerRoutes);
 app.use('/api/why-gudmed', whyGudMedRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'GudMed API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health'
+    }
+  });
+});
+
+// Initialize Socket.IO
+const server = initSocket(app);
+
+// Start server
 const PORT = process.env.PORT || 5000;
-
-const startServer = async () => {
-  try {
-    await connectDB();
-    const server = app.listen(PORT, () => {
-      console.log(`Server listening on port ${PORT}`);
-    });
-    initSocket(server);
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
-startServer();
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
 
 export default app;
