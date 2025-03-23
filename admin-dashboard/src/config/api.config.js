@@ -32,75 +32,75 @@ const getEnvironmentConfig = () => {
 export const ENDPOINTS = {
   // Auth endpoints
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH_TOKEN: '/auth/refresh-token',
-    USER: '/auth/user'
+    LOGIN: '/api/auth/login',
+    REGISTER: '/api/auth/register',
+    LOGOUT: '/api/auth/logout',
+    REFRESH_TOKEN: '/api/auth/refresh-token',
+    USER: '/api/auth/user'
   },
 
   // Pages/Slides endpoints
   PAGES: {
-    LIST: '/pages',
-    DETAIL: (id) => `/pages/${id}`,
-    CREATE: '/pages',
-    UPDATE: (id) => `/pages/${id}`,
-    DELETE: (id) => `/pages/${id}`
+    LIST: '/api/pages',
+    DETAIL: (id) => `/api/pages/${id}`,
+    CREATE: '/api/pages',
+    UPDATE: (id) => `/api/pages/${id}`,
+    DELETE: (id) => `/api/pages/${id}`
   },
 
   // Technology endpoints
   TECHNOLOGY: {
-    LIST: '/technology',
-    DETAIL: (id) => `/technology/${id}`,
-    CREATE: '/technology',
-    UPDATE: (id) => `/technology/${id}`,
-    DELETE: (id) => `/technology/${id}`
+    LIST: '/api/technology',
+    DETAIL: (id) => `/api/technology/${id}`,
+    CREATE: '/api/technology',
+    UPDATE: (id) => `/api/technology/${id}`,
+    DELETE: (id) => `/api/technology/${id}`
   },
 
   // AI Page endpoints
   AI_PAGES: {
-    LIST: '/ai-pages',
-    DETAIL: (id) => `/ai-pages/${id}`,
-    CREATE: '/ai-pages',
-    UPDATE: (id) => `/ai-pages/${id}`,
-    DELETE: (id) => `/ai-pages/${id}`,
+    LIST: '/api/ai-pages',
+    DETAIL: (id) => `/api/ai-pages/${id}`,
+    CREATE: '/api/ai-pages',
+    UPDATE: (id) => `/api/ai-pages/${id}`,
+    DELETE: (id) => `/api/ai-pages/${id}`,
   },
 
   // Why GudMed endpoints
   WHY_GUDMED: {
-    LIST: '/why-gudmed',
-    DETAIL: (id) => `/why-gudmed/${id}`,
-    CREATE: '/why-gudmed',
-    UPDATE: (id) => `/why-gudmed/${id}`,
-    DELETE: (id) => `/why-gudmed/${id}`,
+    LIST: '/api/why-gudmed',
+    DETAIL: (id) => `/api/why-gudmed/${id}`,
+    CREATE: '/api/why-gudmed',
+    UPDATE: (id) => `/api/why-gudmed/${id}`,
+    DELETE: (id) => `/api/why-gudmed/${id}`,
     UNIQUE_POINTS: {
-      LIST: '/why-gudmed/unique-points',
-      CREATE: '/why-gudmed/unique-points',
-      UPDATE: (id) => `/why-gudmed/unique-points/${id}`,
-      DELETE: (id) => `/why-gudmed/unique-points/${id}`
+      LIST: '/api/why-gudmed/unique-points',
+      CREATE: '/api/why-gudmed/unique-points',
+      UPDATE: (id) => `/api/why-gudmed/unique-points/${id}`,
+      DELETE: (id) => `/api/why-gudmed/unique-points/${id}`
     }
   },
 
   // Clients endpoints
   CLIENTS: {
-    LIST: '/clients',
-    SETTINGS: '/clients',
-    GET_SETTINGS: '/clients'
+    LIST: '/api/clients',
+    SETTINGS: '/api/clients',
+    GET_SETTINGS: '/api/clients'
   },
 
   // Users endpoints
   USERS: {
-    LIST: '/users',
-    DETAIL: (id) => `/users/${id}`,
-    CREATE: '/users',
-    UPDATE: (id) => `/users/${id}`,
-    DELETE: (id) => `/users/${id}`
+    LIST: '/api/users',
+    DETAIL: (id) => `/api/users/${id}`,
+    CREATE: '/api/users',
+    UPDATE: (id) => `/api/users/${id}`,
+    DELETE: (id) => `/api/users/${id}`
   },
 
   // Settings endpoints
   SETTINGS: {
-    GET: '/settings',
-    UPDATE: '/settings'
+    GET: '/api/settings',
+    UPDATE: '/api/settings'
   }
 };
 
@@ -108,11 +108,6 @@ export const ENDPOINTS = {
 export const config = {
   API_URL: getEnvironmentConfig().API_URL,
   SOCKET_URL: getEnvironmentConfig().SOCKET_URL,
-  getApiUrl: (endpoint) => {
-    const baseUrl = getEnvironmentConfig().API_URL;
-    // Remove trailing /api if it exists
-    const cleanBaseUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
-    return `${cleanBaseUrl}/api${endpoint}`;
-  },
+  getApiUrl: (endpoint) => `${getEnvironmentConfig().API_URL}${endpoint}`,
   getSocketUrl: () => getEnvironmentConfig().SOCKET_URL,
 }; 

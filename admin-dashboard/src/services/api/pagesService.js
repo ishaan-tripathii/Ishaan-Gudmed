@@ -125,50 +125,50 @@ const pagesService = {
     // Why GudMed methods
     getWhyGudMedList: async () => {
         try {
-            const response = await apiService.get(ENDPOINTS.WHY_GUDMED.LIST);
+            const response = await apiService.get('/api/why-gudmed');
             return response.data;
         } catch (error) {
-            console.error('Error fetching why gudmed list:', error);
+            console.error('Error fetching WhyGudMed list:', error);
             throw error;
         }
     },
 
     getWhyGudMedById: async (id) => {
         try {
-            const response = await apiService.get(ENDPOINTS.WHY_GUDMED.DETAIL(id));
+            const response = await apiService.get(`/api/why-gudmed/${id}`);
             return response.data;
         } catch (error) {
-            console.error('Error fetching why gudmed:', error);
+            console.error('Error fetching WhyGudMed by id:', error);
             throw error;
         }
     },
 
     createWhyGudMed: async (data) => {
         try {
-            const response = await apiService.post(ENDPOINTS.WHY_GUDMED.CREATE, data);
+            const response = await apiService.post('/api/why-gudmed', data);
             return response.data;
         } catch (error) {
-            console.error('Error creating why gudmed:', error);
+            console.error('Error creating WhyGudMed:', error);
             throw error;
         }
     },
 
     updateWhyGudMed: async (id, data) => {
         try {
-            const response = await apiService.put(ENDPOINTS.WHY_GUDMED.UPDATE(id), data);
+            const response = await apiService.put(`/api/why-gudmed/${id}`, data);
             return response.data;
         } catch (error) {
-            console.error('Error updating why gudmed:', error);
+            console.error('Error updating WhyGudMed:', error);
             throw error;
         }
     },
 
     deleteWhyGudMed: async (id) => {
         try {
-            const response = await apiService.delete(ENDPOINTS.WHY_GUDMED.DELETE(id));
+            const response = await apiService.delete(`/api/why-gudmed/${id}`);
             return response.data;
         } catch (error) {
-            console.error('Error deleting why gudmed:', error);
+            console.error('Error deleting WhyGudMed:', error);
             throw error;
         }
     },

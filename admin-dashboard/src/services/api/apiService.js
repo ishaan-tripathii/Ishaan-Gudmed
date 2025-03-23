@@ -162,11 +162,12 @@ const apiService = {
 
     // Why GudMed methods
     whyGudMed: {
+        list: '/api/why-gudmed',
+        create: '/api/why-gudmed',
+        update: (id) => `/api/why-gudmed/${id}`,
+        delete: (id) => `/api/why-gudmed/${id}`,
+        getById: (id) => `/api/why-gudmed/${id}`,
         getAll: () => apiService.get(ENDPOINTS.WHY_GUDMED.LIST),
-        getById: (id) => apiService.get(ENDPOINTS.WHY_GUDMED.DETAIL(id)),
-        create: (data) => apiService.post(ENDPOINTS.WHY_GUDMED.CREATE, data),
-        update: (id, data) => apiService.put(ENDPOINTS.WHY_GUDMED.UPDATE(id), data),
-        delete: (id) => apiService.delete(ENDPOINTS.WHY_GUDMED.DELETE(id)),
         getUniquePoints: () => apiService.get(ENDPOINTS.WHY_GUDMED.UNIQUE_POINTS.LIST),
         createUniquePoint: (data) => apiService.post(ENDPOINTS.WHY_GUDMED.UNIQUE_POINTS.CREATE, data),
         updateUniquePoint: (id, data) => apiService.put(ENDPOINTS.WHY_GUDMED.UNIQUE_POINTS.UPDATE(id), data),

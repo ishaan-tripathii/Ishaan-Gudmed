@@ -1,126 +1,398 @@
-import React, { useState } from 'react';
-import { toast } from 'react-toastify';
-import { useRealtimeUpdates } from '../../hooks/useRealtimeUpdates';
-import WhyGudMedForm from './WhyGudMedForm';
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import io from "socket.io-client";
+import pagesService from "../../services/api/pagesService";
 
 const WhyGudMedManager = () => {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState(null);
+  const [pages, setPages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    slug: "",
+    cards: [],
+    footer: { title: "", description: "", ctaText: "", ctaLink: "" },
+  });
+  const [socket, setSocket] = useState(null);
 
-  const { data: whyGudMedItems, loading, emitEvent, refetch } = useRealtimeUpdates('whyGudMed');
-
-  const handleCreate = async (formData) => {
+  // Fetch pages from the server
+  const fetchPages = async () => {
     try {
-      const response = await fetch('/api/why-gudmed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error('Failed to create item');
-
-      const newItem = await response.json();
-      emitEvent('create', newItem);
-      toast.success('Item created successfully');
-      setIsFormOpen(false);
-    } catch (error) {
-      console.error('Create error:', error);
-      toast.error('Failed to create item');
+      setIsLoading(true);
+      const response = await pagesService.getWhyGudMedList();
+      setPages(response?.data || []);
+    } catch (err) {
+      console.error("Error fetching pages:", err);
+      toast.error("Failed to load pages");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleUpdate = async (id, formData) => {
-    try {
-      const response = await fetch(`/api/why-gudmed/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+  // Setup Socket.IO and fetch pages on mount
+  useEffect(() => {
+    const newSocket = io("http://localhost:5000");
+    setSocket(newSocket);
 
-      if (!response.ok) throw new Error('Failed to update item');
+    newSocket.on("connect", () => console.log("Socket connected"));
+    newSocket.on("whyGudMedUpdated", () => {
+      console.log("Received whyGudMedUpdated event");
+      fetchPages();
+    });
+    newSocket.on("connect_error", (err) => console.log("Socket error:", err));
 
-      const updatedItem = await response.json();
-      emitEvent('update', updatedItem);
-      toast.success('Item updated successfully');
-      setIsFormOpen(false);
-      setItemToEdit(null);
-    } catch (error) {
-      console.error('Update error:', error);
-      toast.error('Failed to update item');
-    }
+    fetchPages();
+
+    return () => {
+      newSocket.off("whyGudMedUpdated");
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Reset form to initial state
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      slug: "",
+      cards: [],
+      footer: { title: "", description: "", ctaText: "", ctaLink: "" },
+    });
+    setCurrentPage(null);
   };
 
+  // Handle edit button click
+  const handleEdit = (page) => {
+    setCurrentPage(page);
+    setFormData({
+      title: page.title || "",
+      description: page.description || "",
+      slug: page.slug || "",
+      cards: Array.isArray(page.cards)
+        ? page.cards.map((card) => ({
+            icon: card.icon || "",
+            title: card.title || "",
+            description: card.description || "",
+            points: Array.isArray(card.points) ? [...card.points] : [],
+          }))
+        : [],
+      footer: {
+        title: page.footer?.title || "",
+        description: page.footer?.description || "",
+        ctaText: page.footer?.ctaText || "",
+        ctaLink: page.footer?.ctaLink || "",
+      },
+    });
+  };
+
+  // Handle delete button click
   const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this page?")) return;
     try {
-      const response = await fetch(`/api/why-gudmed/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete item');
-
-      emitEvent('delete', id);
-      toast.success('Item deleted successfully');
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete item');
+      await pagesService.deleteWhyGudMed(id);
+      toast.success("Page deleted successfully");
+      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
+      await fetchPages();
+    } catch (err) {
+      toast.error("Failed to delete page");
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      if (currentPage) {
+        await pagesService.updateWhyGudMed(currentPage._id, formData);
+        toast.success("Page updated successfully");
+      } else {
+        await pagesService.createWhyGudMed(formData);
+        toast.success("Page created successfully");
+      }
+      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
+      await fetchPages();
+      resetForm();
+    } catch (err) {
+      toast.error("Failed to save page");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Card handlers
+  const addCard = () => {
+    setFormData({
+      ...formData,
+      cards: [...formData.cards, { icon: "", title: "", description: "", points: [] }],
+    });
+  };
+
+  const handleCardChange = (index, field, value) => {
+    const updatedCards = formData.cards.map((card, i) =>
+      i === index ? { ...card, [field]: value } : card
+    );
+    setFormData({ ...formData, cards: updatedCards });
+  };
+
+  const handleDeleteCard = (index) => {
+    if (!window.confirm("Are you sure you want to delete this card?")) return;
+    const updatedCards = formData.cards.filter((_, i) => i !== index);
+    setFormData({ ...formData, cards: updatedCards });
+  };
+
+  // Point handlers
+  const addPoint = (cardIndex) => {
+    const updatedCards = formData.cards.map((card, i) =>
+      i === cardIndex
+        ? { ...card, points: [...(card.points || []), { icon: "", text: "" }] }
+        : card
+    );
+    setFormData({ ...formData, cards: updatedCards });
+  };
+
+  const handlePointChange = (cardIndex, pointIndex, field, value) => {
+    const updatedCards = formData.cards.map((card, i) =>
+      i === cardIndex
+        ? {
+            ...card,
+            points: card.points.map((point, j) =>
+              j === pointIndex ? { ...point, [field]: value } : point
+            ),
+          }
+        : card
+    );
+    setFormData({ ...formData, cards: updatedCards });
+  };
+
+  const handleDeletePoint = (cardIndex, pointIndex) => {
+    if (!window.confirm("Are you sure you want to delete this point?")) return;
+    const updatedCards = formData.cards.map((card, i) =>
+      i === cardIndex
+        ? { ...card, points: card.points.filter((_, j) => j !== pointIndex) }
+        : card
+    );
+    setFormData({ ...formData, cards: updatedCards });
+  };
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Why GudMed Is Unique</h1>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Add New Item
-        </button>
-      </div>
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-6">Why GudMed Manager</h1>
+      <ToastContainer />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {whyGudMedItems.map((item) => (
-          <div key={item._id} className="border rounded-lg p-4 shadow">
-            <h3 className="font-bold mb-2">{item.title}</h3>
-            <p className="text-gray-600 mb-4">{item.description}</p>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => {
-                  setItemToEdit(item);
-                  setIsFormOpen(true);
-                }}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(item._id)}
-                className="text-red-500 hover:text-red-700"
-              >
-                Delete
-              </button>
-            </div>
+      {/* Form Section */}
+      <h2 className="text-2xl font-semibold mb-4">
+        {currentPage ? "Edit Page" : "Create New Page"}
+      </h2>
+      <form onSubmit={handleSubmit} className="mb-8">
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <textarea
+            placeholder="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Slug"
+            value={formData.slug}
+            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <h3 className="text-xl font-semibold mb-2">Cards</h3>
+        {Array.isArray(formData.cards) && formData.cards.map((card, cardIndex) => (
+          <div key={cardIndex} className="mb-4 p-4 border rounded">
+            <input
+              type="text"
+              placeholder="Icon (e.g., FaClock)"
+              value={card.icon}
+              onChange={(e) => handleCardChange(cardIndex, "icon", e.target.value)}
+              className="w-full p-2 mb-2 border rounded"
+            />
+            <input
+              type="text"
+              placeholder="Title"
+              value={card.title}
+              onChange={(e) => handleCardChange(cardIndex, "title", e.target.value)}
+              className="w-full p-2 mb-2 border rounded"
+            />
+            <textarea
+              placeholder="Description"
+              value={card.description}
+              onChange={(e) => handleCardChange(cardIndex, "description", e.target.value)}
+              className="w-full p-2 mb-2 border rounded"
+            />
+            <h4 className="text-lg font-medium mb-2">Points</h4>
+            {Array.isArray(card.points) && card.points.map((point, pointIndex) => (
+              <div key={pointIndex} className="flex space-x-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="Point Icon (e.g., FaClock)"
+                  value={point.icon}
+                  onChange={(e) =>
+                    handlePointChange(cardIndex, pointIndex, "icon", e.target.value)
+                  }
+                  className="w-1/3 p-2 border rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Point Text"
+                  value={point.text}
+                  onChange={(e) =>
+                    handlePointChange(cardIndex, pointIndex, "text", e.target.value)
+                  }
+                  className="w-2/3 p-2 border rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleDeletePoint(cardIndex, pointIndex)}
+                  className="bg-red-500 text-white p-1 rounded"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addPoint(cardIndex)}
+              className="bg-blue-500 text-white p-1 rounded mb-2"
+            >
+              Add Point
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteCard(cardIndex)}
+              className="bg-red-500 text-white p-1 rounded"
+            >
+              Delete Card
+            </button>
           </div>
         ))}
-      </div>
+        <button
+          type="button"
+          onClick={addCard}
+          className="bg-blue-500 text-white p-2 rounded mr-2"
+        >
+          Add Card
+        </button>
 
-      {isFormOpen && (
-        <WhyGudMedForm
-          item={itemToEdit}
-          onSubmit={itemToEdit ? handleUpdate : handleCreate}
-          onClose={() => {
-            setIsFormOpen(false);
-            setItemToEdit(null);
-          }}
-        />
+        <h3 className="text-xl font-semibold mb-2 mt-4">Footer</h3>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Footer Title"
+            value={formData.footer.title}
+            onChange={(e) =>
+              setFormData({ ...formData, footer: { ...formData.footer, title: e.target.value } })
+            }
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div className="mb-4">
+          <textarea
+            placeholder="Footer Description"
+            value={formData.footer.description}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                footer: { ...formData.footer, description: e.target.value },
+              })
+            }
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="CTA Text"
+            value={formData.footer.ctaText}
+            onChange={(e) =>
+              setFormData({ ...formData, footer: { ...formData.footer, ctaText: e.target.value } })
+            }
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="CTA Link"
+            value={formData.footer.ctaLink}
+            onChange={(e) =>
+              setFormData({ ...formData, footer: { ...formData.footer, ctaLink: e.target.value } })
+            }
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          {currentPage && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-gray-500 text-white p-2 rounded"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`bg-green-500 text-white p-2 rounded ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {isLoading ? "Saving..." : currentPage ? "Update" : "Create"} Page
+          </button>
+        </div>
+      </form>
+
+      {/* Page List */}
+      <h2 className="text-xl font-semibold mb-2">Existing Pages</h2>
+      {isLoading ? (
+        <div className="text-center py-4">Loading...</div>
+      ) : pages.length === 0 ? (
+        <p>No pages found.</p>
+      ) : (
+        <ul className="space-y-2">
+          {pages.map((page) => (
+            <li key={page._id} className="flex justify-between p-2 border rounded">
+              <span>{page.title || "Untitled"}</span>
+              <div>
+                <button
+                  onClick={() => handleEdit(page)}
+                  className="bg-yellow-500 text-white p-1 rounded mr-2"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(page._id)}
+                  className="bg-red-500 text-white p-1 rounded"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
