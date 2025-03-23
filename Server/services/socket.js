@@ -9,16 +9,19 @@ const initSocket = (httpServer) => {
         'http://localhost:3000',
         'http://localhost:3001',
         'https://gudmed-frontend.onrender.com',
-        'https://gudmed-admin.onrender.com'
+        'https://gudmed-admin.onrender.com',
+        'https://gudmed-backend.onrender.com',
+        'https://www.gudmed.in'
       ],
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
       credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization']
     },
     path: '/socket.io',
     transports: ['websocket', 'polling'],
     pingTimeout: 60000,
-    pingInterval: 25000
+    pingInterval: 25000,
+    connectTimeout: 45000
   });
 
   io.on('connection', (socket) => {

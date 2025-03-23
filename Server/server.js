@@ -27,9 +27,10 @@ const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://my-project.onrender.com',
+    'https://gudmed-frontend.onrender.com',
     'https://gudmed-admin.onrender.com',
-    'https://gudmed-frontend.onrender.com'
+    'https://gudmed-backend.onrender.com',
+    'https://www.gudmed.in'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
