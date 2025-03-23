@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { RefreshCw, Edit, Trash2, PlusCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import useSocket from "../../hooks/useSocket";
-import useApi from "../../hooks/useApi";
+import { useSocket } from "../../hooks/useSocket";
+import { ToastContainer, toast } from "react-toastify";
 import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Card from "../common/Card";
 import PageForm from "../PageForm";
+import { useApi } from "../../hooks/useApi";
 
 const SliderManager = () => {
   const [pages, setPages] = useState([]);

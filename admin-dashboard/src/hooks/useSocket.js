@@ -1,48 +1,85 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
-
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+import { config } from '../config/api.config';
+import { toast } from 'react-toastify';
 
 export const useSocket = () => {
-    const socketRef = useRef(null);
+    const [socket, setSocket] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Initialize socket connection
-        socketRef.current = io(SOCKET_URL, {
-            transports: ['websocket', 'polling'],
-            path: '/socket.io',
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setError('No authentication token found');
+            return;
+        }
+
+        const socketInstance = io(config.SOCKET_URL, {
+            auth: { token },
+            transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
-            autoConnect: true
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            autoConnect: true,
+            forceNew: true
         });
 
-        // Connection event handlers
-        socketRef.current.on('connect', () => {
-            console.log('Socket connected successfully');
+        socketInstance.on('connect', () => {
+            console.log('Socket connected:', socketInstance.id);
+            setIsConnected(true);
+            setError(null);
+            toast.success('Connected to server');
         });
 
-        socketRef.current.on('connect_error', (error) => {
+        socketInstance.on('connect_error', (error) => {
             console.error('Socket connection error:', error);
+            setError(error.message);
+            setIsConnected(false);
+            toast.error('Connection error: ' + error.message);
         });
 
-        socketRef.current.on('disconnect', (reason) => {
+        socketInstance.on('disconnect', (reason) => {
             console.log('Socket disconnected:', reason);
+            setIsConnected(false);
             if (reason === 'io server disconnect') {
-                // Reconnect if server disconnected
-                socketRef.current.connect();
+                // Server disconnected, try to reconnect
+                console.log('Server disconnected, attempting to reconnect...');
+                socketInstance.connect();
             }
         });
 
-        // Cleanup on unmount
+        socketInstance.on('reconnect_attempt', (attemptNumber) => {
+            console.log('Reconnection attempt:', attemptNumber);
+        });
+
+        socketInstance.on('reconnect', () => {
+            console.log('Reconnected to server');
+            setIsConnected(true);
+            setError(null);
+            toast.success('Reconnected to server');
+        });
+
+        socketInstance.on('reconnect_error', (error) => {
+            console.error('Reconnection error:', error);
+        });
+
+        socketInstance.on('reconnect_failed', () => {
+            console.error('Failed to reconnect');
+            toast.error('Failed to reconnect to server');
+        });
+
+        setSocket(socketInstance);
+
         return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
+            if (socketInstance) {
+                console.log('Cleaning up socket connection');
+                socketInstance.disconnect();
             }
         };
     }, []);
 
-    return socketRef.current;
-};
-
-export default useSocket; 
+    return { socket, isConnected, error };
+}; 

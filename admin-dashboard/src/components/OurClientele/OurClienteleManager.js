@@ -2,55 +2,55 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import pagesService from "../../../services/api/pagesService";
-import { useRealtimeUpdates } from "../../../hooks/useRealtimeUpdates";
+import pagesService from "../../services/api/pagesService";
+import { useRealtimeUpdates } from "../../hooks/useRealtimeUpdates";
 
-const SliderManager = () => {
-    const [sliders, setSliders] = useState([]);
+const OurClienteleManager = () => {
+    const [clienteles, setClienteles] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [currentSlider, setCurrentSlider] = useState(null);
+    const [currentClientele, setCurrentClientele] = useState(null);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         image: "",
     });
 
-    // Fetch sliders from the server
-    const fetchSliders = async () => {
+    // Fetch clienteles from the server
+    const fetchClienteles = async () => {
         try {
             setIsLoading(true);
-            const response = await pagesService.getSliderList();
-            setSliders(response?.data || []);
+            const response = await pagesService.getOurClienteleList();
+            setClienteles(response?.data || []);
         } catch (err) {
-            console.error("Error fetching sliders:", err);
-            toast.error("Failed to load sliders");
+            console.error("Error fetching clienteles:", err);
+            toast.error("Failed to load clienteles");
         } finally {
             setIsLoading(false);
         }
     };
 
     // Setup real-time updates
-    const { emitEvent } = useRealtimeUpdates('slider', (eventType, data) => {
+    const { emitEvent } = useRealtimeUpdates('clientele', (eventType, data) => {
         switch (eventType) {
             case 'create':
-                setSliders(prev => [...prev, data]);
-                toast.success('New slider created in real-time!');
+                setClienteles(prev => [...prev, data]);
+                toast.success('New clientele created in real-time!');
                 break;
             case 'update':
-                setSliders(prev => prev.map(slider =>
-                    slider._id === data._id ? data : slider
+                setClienteles(prev => prev.map(clientele =>
+                    clientele._id === data._id ? data : clientele
                 ));
-                toast.success('Slider updated in real-time!');
+                toast.success('Clientele updated in real-time!');
                 break;
             case 'delete':
-                setSliders(prev => prev.filter(slider => slider._id !== data._id));
-                toast.success('Slider deleted in real-time!');
+                setClienteles(prev => prev.filter(clientele => clientele._id !== data._id));
+                toast.success('Clientele deleted in real-time!');
                 break;
         }
     });
 
     useEffect(() => {
-        fetchSliders();
+        fetchClienteles();
     }, []);
 
     // Reset form to initial state
@@ -60,28 +60,28 @@ const SliderManager = () => {
             description: "",
             image: "",
         });
-        setCurrentSlider(null);
+        setCurrentClientele(null);
     };
 
     // Handle edit button click
-    const handleEdit = (slider) => {
-        setCurrentSlider(slider);
+    const handleEdit = (clientele) => {
+        setCurrentClientele(clientele);
         setFormData({
-            title: slider.title || "",
-            description: slider.description || "",
-            image: slider.image || "",
+            title: clientele.title || "",
+            description: clientele.description || "",
+            image: clientele.image || "",
         });
     };
 
     // Handle delete button click
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this slider?")) return;
+        if (!window.confirm("Are you sure you want to delete this clientele?")) return;
         try {
-            await pagesService.deleteSlider(id);
+            await pagesService.deleteOurClientele(id);
             emitEvent('delete', { _id: id });
-            toast.success("Slider deleted successfully");
+            toast.success("Clientele deleted successfully");
         } catch (err) {
-            toast.error("Failed to delete slider");
+            toast.error("Failed to delete clientele");
         }
     };
 
@@ -91,18 +91,18 @@ const SliderManager = () => {
         setIsLoading(true);
         try {
             let response;
-            if (currentSlider) {
-                response = await pagesService.updateSlider(currentSlider._id, formData);
+            if (currentClientele) {
+                response = await pagesService.updateOurClientele(currentClientele._id, formData);
                 emitEvent('update', response.data);
-                toast.success("Slider updated successfully");
+                toast.success("Clientele updated successfully");
             } else {
-                response = await pagesService.createSlider(formData);
+                response = await pagesService.createOurClientele(formData);
                 emitEvent('create', response.data);
-                toast.success("Slider created successfully");
+                toast.success("Clientele created successfully");
             }
             resetForm();
         } catch (err) {
-            toast.error("Failed to save slider");
+            toast.error("Failed to save clientele");
         } finally {
             setIsLoading(false);
         }
@@ -110,12 +110,12 @@ const SliderManager = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-3xl font-bold mb-6">Slider Manager</h1>
+            <h1 className="text-3xl font-bold mb-6">Our Clientele Manager</h1>
             <ToastContainer />
 
             {/* Form Section */}
             <h2 className="text-2xl font-semibold mb-4">
-                {currentSlider ? "Edit Slider" : "Create New Slider"}
+                {currentClientele ? "Edit Clientele" : "Create New Clientele"}
             </h2>
             <form onSubmit={handleSubmit} className="mb-8">
                 <div className="mb-4">
@@ -149,7 +149,7 @@ const SliderManager = () => {
                 </div>
 
                 <div className="flex gap-2">
-                    {currentSlider && (
+                    {currentClientele && (
                         <button
                             type="button"
                             onClick={resetForm}
@@ -164,39 +164,39 @@ const SliderManager = () => {
                         className={`bg-green-500 text-white p-2 rounded ${isLoading ? "opacity-50 cursor-not-allowed" : ""
                             }`}
                     >
-                        {isLoading ? "Saving..." : currentSlider ? "Update" : "Create"} Slider
+                        {isLoading ? "Saving..." : currentClientele ? "Update" : "Create"} Clientele
                     </button>
                 </div>
             </form>
 
-            {/* Slider List */}
-            <h2 className="text-xl font-semibold mb-2">Existing Sliders</h2>
+            {/* Clientele List */}
+            <h2 className="text-xl font-semibold mb-2">Existing Clienteles</h2>
             {isLoading ? (
                 <div className="text-center py-4">Loading...</div>
-            ) : sliders.length === 0 ? (
-                <p>No sliders found.</p>
+            ) : clienteles.length === 0 ? (
+                <p>No clienteles found.</p>
             ) : (
                 <ul className="space-y-2">
-                    {sliders.map((slider) => (
-                        <li key={slider._id} className="flex justify-between p-2 border rounded">
+                    {clienteles.map((clientele) => (
+                        <li key={clientele._id} className="flex justify-between p-2 border rounded">
                             <div>
-                                <h4 className="font-semibold">{slider.title}</h4>
-                                <p className="text-gray-600">{slider.description}</p>
+                                <h4 className="font-semibold">{clientele.title}</h4>
+                                <p className="text-gray-600">{clientele.description}</p>
                                 <img
-                                    src={slider.image}
-                                    alt={slider.title}
+                                    src={clientele.image}
+                                    alt={clientele.title}
                                     className="w-24 h-24 object-cover mt-2"
                                 />
                             </div>
                             <div>
                                 <button
-                                    onClick={() => handleEdit(slider)}
+                                    onClick={() => handleEdit(clientele)}
                                     className="bg-yellow-500 text-white p-1 rounded mr-2"
                                 >
                                     Edit
                                 </button>
                                 <button
-                                    onClick={() => handleDelete(slider._id)}
+                                    onClick={() => handleDelete(clientele._id)}
                                     className="bg-red-500 text-white p-1 rounded"
                                 >
                                     Delete
@@ -210,4 +210,4 @@ const SliderManager = () => {
     );
 };
 
-export default SliderManager; 
+export default OurClienteleManager; 

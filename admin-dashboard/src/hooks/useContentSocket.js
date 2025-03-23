@@ -1,35 +1,41 @@
 import { useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
-import apiConfig from '../config/api.config';
+import { config } from '../config/api.config';
 
 const useContentSocket = (contentType, onUpdate) => {
     useEffect(() => {
-        const socket = io(apiConfig.getSocketUrl(), {
+        const token = localStorage.getItem('token');
+
+        const socket = io(config.getSocketUrl(), {
             reconnection: true,
-            transports: ['websocket']
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            transports: ['websocket'],
+            auth: token ? { token } : undefined
         });
 
         socket.on('connect', () => {
-            if (apiConfig.ENABLE_LOGS) {
+            if (process.env.REACT_APP_ENABLE_LOGS === 'true') {
                 console.log('Socket connected:', socket.id);
             }
         });
 
         socket.on(`${contentType}Updated`, (data) => {
-            if (apiConfig.ENABLE_LOGS) {
+            if (process.env.REACT_APP_ENABLE_LOGS === 'true') {
                 console.log(`${contentType} update received:`, data);
             }
             onUpdate(data);
         });
 
         socket.on('connect_error', (err) => {
-            if (apiConfig.ENABLE_LOGS) {
+            if (process.env.REACT_APP_ENABLE_LOGS === 'true') {
                 console.error('Socket connection error:', err.message);
             }
         });
 
         socket.on('disconnect', (reason) => {
-            if (apiConfig.ENABLE_LOGS) {
+            if (process.env.REACT_APP_ENABLE_LOGS === 'true') {
                 console.log('Socket disconnected:', reason);
             }
         });

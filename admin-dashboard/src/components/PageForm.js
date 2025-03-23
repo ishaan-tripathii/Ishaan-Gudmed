@@ -1,17 +1,18 @@
 "use client"
 
 import React, { useState } from "react"
+import { motion } from "framer-motion"
 import { PlusCircle, Trash2 } from "lucide-react"
 import useApi from "../hooks/useApi"
+import { useRealtimeUpdates } from '../hooks/useRealtimeUpdates'
 import Button from "./common/Button"
 import Modal from "./common/Modal"
 
 const gradientOptions = [
-  { value: "bg-gradient-to-r from-purple-400 via-pink-500 to-red-500", label: "Purple to Red" },
-  { value: "bg-gradient-to-r from-blue-400 via-teal-500 to-green-500", label: "Blue to Green" },
-  { value: "bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500", label: "Yellow to Red" },
-  { value: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500", label: "Indigo to Pink" },
-  { value: "bg-gradient-to-r from-green-400 via-teal-500 to-blue-500", label: "Green to Blue" },
+  { label: "Blue to Purple", value: "bg-gradient-to-r from-blue-500 to-purple-500" },
+  { label: "Green to Blue", value: "bg-gradient-to-r from-green-500 to-blue-500" },
+  { label: "Red to Orange", value: "bg-gradient-to-r from-red-500 to-orange-500" },
+  { label: "Purple to Pink", value: "bg-gradient-to-r from-purple-500 to-pink-500" },
 ]
 
 const FormField = ({ label, children, className = "" }) => (
@@ -62,6 +63,7 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
   const [messageType, setMessageType] = useState("success")
 
   const { post, put } = useApi()
+  const { emitEvent } = useRealtimeUpdates('slider')
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -93,11 +95,14 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
         benefits: formData.benefits.filter((b) => b.heading && b.description),
       }
 
+      let response
       if (pageToEdit) {
-        await put(`/pages/${pageToEdit._id}`, data)
+        response = await put(`/pages/${pageToEdit._id}`, data)
+        emitEvent('update', response.data)
         setMessage("Page updated successfully")
       } else {
-        await post("/pages", data)
+        response = await post("/pages", data)
+        emitEvent('create', response.data)
         setMessage("Page created successfully")
         setFormData({
           titleDesktop: "",
@@ -121,27 +126,27 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={pageToEdit ? "Edit Slide" : "Create New Slide"}
+      title={pageToEdit ? "Edit Slide" : "New Slide"}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Desktop Title">
-            <textarea
+            <input
+              type="text"
               value={formData.titleDesktop}
               onChange={(e) => handleChange("titleDesktop", e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-              rows="3"
             />
           </FormField>
 
           <FormField label="Mobile Title">
-            <textarea
+            <input
+              type="text"
               value={formData.titleMobile}
               onChange={(e) => handleChange("titleMobile", e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-              rows="3"
             />
           </FormField>
         </div>
@@ -151,8 +156,7 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
             type="text"
             value={formData.gradientWords}
             onChange={(e) => handleChange("gradientWords", e.target.value)}
-            placeholder="word1, word2, word3"
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
         </FormField>
 
@@ -160,27 +164,26 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
           <select
             value={formData.gradient}
             onChange={(e) => handleChange("gradient", e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           >
-            {gradientOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {gradientOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
-          <div className={`h-6 mt-2 rounded ${formData.gradient}`} />
         </FormField>
 
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700">Benefits</label>
             <Button
-              variant="icon"
-              icon={<PlusCircle className="h-4 w-4" />}
+              type="button"
+              variant="secondary"
               onClick={addBenefit}
-              className="text-indigo-600 hover:bg-indigo-100"
+              className="text-sm"
             >
-              Add
+              Add Benefit
             </Button>
           </div>
           {formData.benefits.map((benefit, index) => (
@@ -199,26 +202,30 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
             type="text"
             value={formData.slug}
             onChange={(e) => handleChange("slug", e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             required
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
           />
         </FormField>
 
         {message && (
-          <div
-            className={`text-sm p-2 rounded ${messageType === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-lg ${messageType === "success"
+              ? "bg-green-50 text-green-800"
+              : "bg-red-50 text-red-800"
               }`}
           >
             {message}
-          </div>
+          </motion.div>
         )}
 
-        <div className="flex gap-2 justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit">
-            {pageToEdit ? "Update" : "Create"}
+          <Button type="submit" variant="primary">
+            {pageToEdit ? "Update" : "Create"} Slide
           </Button>
         </div>
       </form>
