@@ -26,7 +26,7 @@ const OurClient = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get(`${config.API_URL}/clients`);
+      const response = await axios.get(`${config.API_URL}/api/clients`);
       setSettings(response.data);
       setLoading(false);
     } catch (err) {

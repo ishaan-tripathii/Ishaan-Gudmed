@@ -2,20 +2,19 @@ import React, { useState, useEffect } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { getStepByStep } from "./Service/apiService"; // Assuming this is correct
 import { connectSocket, onStepByStepUpdate, onStepByStepCreate, onStepByStepDelete, disconnectSocket } from "./Service/socketService"; // Corrected path
-import config from "../config/config"; // Import config
-
+// Removed: import socket from "./Service/socketService" (unused)
 const StepByStep = () => {
   const [data, setData] = useState({ steps: [], heading: "", subheading: "", description: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Initialize both API and Socket.IO in a single lifecycle
-    const socket = connectSocket(config.socketBaseUrl); // Use socketBaseUrl from config
+    const socket = connectSocket();
 
     // Fetch initial data via API
     const fetchData = async () => {
       try {
-        const initialData = await getStepByStep(config.apiBaseUrl); // Use apiBaseUrl from config
+        const initialData = await getStepByStep();
         setData(initialData);
         setLoading(false);
       } catch (error) {

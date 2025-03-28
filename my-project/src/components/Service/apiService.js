@@ -1,12 +1,15 @@
-// apiService.js
 import axios from "axios";
 
-// Use environment variable for the API URL, fallback to localhost for development
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const isProduction = process.env.NODE_ENV === "production";
+
+const config = {
+  apiBaseUrl: isProduction ? "https://gudmed-backend.onrender.com/api" : "http://localhost:5000/api",
+  socketBaseUrl: isProduction ? "https://gudmed-backend.onrender.com" : "http://localhost:5000",
+};
 
 export const getStepByStep = async () => {
   try {
-    const response = await axios.get(`${API_URL}/step-by-step`);
+    const response = await axios.get(`${config.apiBaseUrl}/step-by-step`);
     return response.data;
   } catch (error) {
     console.error("Error fetching step-by-step data:", error);
@@ -16,7 +19,7 @@ export const getStepByStep = async () => {
 
 export const updateStepByStep = async (data, token) => {
   try {
-    const response = await axios.put(`${API_URL}/step-by-step`, data, {
+    const response = await axios.put(`${config.apiBaseUrl}/step-by-step`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
