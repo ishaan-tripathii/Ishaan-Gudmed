@@ -1,3 +1,4 @@
+// controllers/pagesController.js
 import Page from '../models/Slider.js';
 import { notifyClients } from '../services/socket.js';
 
@@ -16,7 +17,7 @@ const createPage = async (req, res) => {
     const { titleDesktop, titleMobile, gradientWords, gradient, benefits, slug } = req.body;
     const page = new Page({ titleDesktop, titleMobile, gradientWords, gradient, benefits, slug });
     await page.save();
-    notifyClients('pageCreated', page); // Real-time notification for page creation
+    notifyClients('pageCreated', page); // Updated to use 'pageCreated'
     res.status(201).json(page);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -33,8 +34,9 @@ const updatePage = async (req, res) => {
       { new: true }
     );
     if (!page) return res.status(404).json({ message: 'Page not found' });
-    notifyClients('pageUpdated', page); // Real-time notification for page update
-    res.json(page);
+    const pageData = page.toJSON(); // Convert Mongoose document to plain JSON
+    notifyClients('pageUpdated', pageData); // Updated to use 'pageUpdated'
+    res.json(pageData);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -45,7 +47,7 @@ const deletePage = async (req, res) => {
     const { id } = req.params;
     const page = await Page.findByIdAndDelete(id);
     if (!page) return res.status(404).json({ message: 'Page not found' });
-    notifyClients('pageDeleted', page.slug); // Real-time notification for page deletion
+    notifyClients('pageDeleted', page.slug); // Updated to use 'pageDeleted'
     res.json({ message: 'Page deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

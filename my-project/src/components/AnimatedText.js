@@ -1,9 +1,20 @@
+// src/components/AnimatedText.jsx
 import React, { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
-import * as FaIcons from "react-icons/fa"; // Import all Fa icons dynamically
-import { socket } from "../socket";
-import api from "../utils/api";
+import * as FaIcons from "react-icons/fa";
 import { Toaster, toast } from "react-hot-toast";
+import io from "socket.io-client";
+import axios from "axios";
+import config from "../config/config"; // Updated path to the config file
+
+// Use the dynamic configuration for API and Socket.IO
+const API_BASE_URL = config.apiBaseUrl;
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 const AnimatedText = () => {
   const [animatedText, setAnimatedText] = useState({
@@ -19,28 +30,56 @@ const AnimatedText = () => {
     ],
   });
   const [loading, setLoading] = useState(true);
-
-  const fetchAnimatedText = async () => {
-    try {
-      const response = await api.get("/api/animated-text");
-      setAnimatedText({
-        redMarquee: response.data.redMarquee || animatedText.redMarquee,
-        blackMarquee: response.data.blackMarquee || animatedText.blackMarquee,
-      });
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching animated text:", err);
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    const fetchAnimatedText = async () => {
+      try {
+        const response = await api.get("/animated-text");
+        console.log("Fetched animated text (user):", response.data);
+        setAnimatedText({
+          redMarquee: response.data.redMarquee || animatedText.redMarquee,
+          blackMarquee: response.data.blackMarquee || animatedText.blackMarquee,
+        });
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching animated text:", err);
+        setError("Failed to load animated text");
+        setLoading(false);
+      }
+    };
+
     fetchAnimatedText();
-    socket.on("animatedTextUpdated", fetchAnimatedText);
-    return () => socket.off("animatedTextUpdated");
+
+    socket.on("connect", () => {
+      console.log("Socket.IO connected (user):", socket.id);
+    });
+
+    socket.on("animatedText_updated", (updatedData) => {
+      console.log("Received animatedText_updated (user):", updatedData);
+      setAnimatedText({
+        redMarquee: updatedData.redMarquee,
+        blackMarquee: updatedData.blackMarquee,
+      });
+      toast.success("Animated text updated in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.disconnect();
+      console.log("Socket.IO disconnected (user)");
+    };
   }, []);
 
-  // Optional predefined styles for specific icons (can be expanded or removed)
   const iconStyles = {
     FaPrescription: "text-blue-400",
     FaVials: "text-green-400",
@@ -50,28 +89,25 @@ const AnimatedText = () => {
   };
 
   const renderIcon = (iconName) => {
-    if (!iconName) return null; // No icon provided, return nothing
+    if (!iconName) return null;
     const IconComponent = FaIcons[iconName];
     if (!IconComponent) {
       console.warn(`Icon "${iconName}" not found in react-icons/fa`);
-      return null; // Invalid icon name, return nothing
+      return null;
     }
-    const className = iconStyles[iconName] || "text-white"; // Default to white if no specific style
+    const className = iconStyles[iconName] || "text-white";
     return <IconComponent className={className} />;
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
+  if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
 
   return (
     <div className="relative h-64 mt-2 sm:mt-4 md:mt-4 lg:mt-[40rem] xl:mt-[20rem]">
       <Toaster position="top-right" reverseOrder={false} />
-      {/* Red background with right-to-left moving text */}
       <div
         className="bg-gradient-to-r from-purple-400 to-red-300 h-12 flex items-center absolute top-4 left-0 w-full p-4"
-        style={{
-          transform: "rotate(1deg)",
-          zIndex: 1,
-        }}
+        style={{ transform: "rotate(1deg)", zIndex: 1 }}
       >
         <Marquee speed={60} gradient={false} direction="right" className="hide-scrollbar">
           {animatedText.redMarquee.map((item, index) => (
@@ -83,13 +119,9 @@ const AnimatedText = () => {
         </Marquee>
       </div>
 
-      {/* Black background with left-to-right moving text */}
       <div
         className="bg-[#2E4168] h-12 flex items-center absolute top-20 left-0 w-full"
-        style={{
-          transform: "rotate(-1deg)",
-          zIndex: 0,
-        }}
+        style={{ transform: "rotate(-1deg)", zIndex: 0 }}
       >
         <Marquee speed={60} gradient={false} direction="left" className="hide-scrollbar">
           {animatedText.blackMarquee.map((item, index) => (
@@ -104,7 +136,6 @@ const AnimatedText = () => {
   );
 };
 
-// Tailwind CSS styles to hide the scrollbar
 const style = document.createElement("style");
 style.textContent = `
   .hide-scrollbar::-webkit-scrollbar {

@@ -1,11 +1,9 @@
-// src/components/AdminComparisonPage.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Import the CSS for styling
-
-const socket = io("http://localhost:5000");
+import "react-toastify/dist/ReactToastify.css";
+import config from "../config/config"; // Import the configuration file
 
 const AdminComparisonPage = () => {
   const [comparison, setComparison] = useState({
@@ -27,25 +25,69 @@ const AdminComparisonPage = () => {
     "LockClosedIcon",
   ];
 
-  const fetchComparison = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/comparison");
-      setComparison({
-        title: response.data.title || "GudMed vs Other Technologies",
-        items: response.data.items || [],
-      });
-      setLoading(false);
-    } catch (err) {
-      toast.error(err.message || "Failed to fetch comparison data");
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, { // Use socketBaseUrl from config
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchComparison = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/comparison`, { // Use apiBaseUrl from config
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setComparison({
+          title: response.data.title || "GudMed vs Other Technologies",
+          items: response.data.items || [],
+        });
+        setLoading(false);
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to fetch comparison data");
+        setLoading(false);
+      }
+    };
+
     fetchComparison();
-    socket.on("comparisonUpdated", fetchComparison);
-    return () => socket.off("comparisonUpdated");
-  }, []);
+
+    socket.on("connect", () => {
+      console.log("AdminComparisonPage Socket.IO connected:", socket.id);
+    });
+
+    socket.on("comparison_created", (data) => {
+      console.log("Received comparison_created:", data);
+      setComparison({
+        title: data.title || "GudMed vs Other Technologies",
+        items: data.items || [],
+      });
+      toast.success("Comparison created in real-time!");
+    });
+
+    socket.on("comparison_updated", (data) => {
+      console.log("Received comparison_updated:", data);
+      setComparison({
+        title: data.title || "GudMed vs Other Technologies",
+        items: data.items || [],
+      });
+      toast.success("Comparison updated in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("AdminComparisonPage Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("comparison_created");
+      socket.off("comparison_updated");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,11 +97,10 @@ const AdminComparisonPage = () => {
     }
     try {
       await axios.put(
-        "http://localhost:5000/api/comparison",
+        `${config.apiBaseUrl}/api/comparison`, // Use apiBaseUrl from config
         comparison,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      await fetchComparison();
       toast.success("Comparison data updated successfully!");
     } catch (err) {
       toast.error(err.response?.data?.message || "Error updating comparison data");
@@ -92,7 +133,7 @@ const AdminComparisonPage = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
-    toast.success("Item deleted successfully!");
+    toast.success("Item deleted successfully! Save to confirm.");
   };
 
   const moveItemUp = (index) => {
@@ -203,9 +244,8 @@ const AdminComparisonPage = () => {
                     type="button"
                     onClick={() => moveItemUp(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${
-                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                    }`}
+                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                      }`}
                   >
                     ↑
                   </button>
@@ -213,11 +253,10 @@ const AdminComparisonPage = () => {
                     type="button"
                     onClick={() => moveItemDown(index)}
                     disabled={index === comparison.items.length - 1}
-                    className={`p-2 rounded-lg text-white ${
-                      index === comparison.items.length - 1
+                    className={`p-2 rounded-lg text-white ${index === comparison.items.length - 1
                         ? "bg-gray-300 cursor-not-allowed"
                         : "bg-blue-500 hover:bg-blue-600"
-                    }`}
+                      }`}
                   >
                     ↓
                   </button>
@@ -250,7 +289,6 @@ const AdminComparisonPage = () => {
           </div>
         </form>
 
-        {/* Add ToastContainer to display notifications */}
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} closeOnClick />
       </div>
     </div>

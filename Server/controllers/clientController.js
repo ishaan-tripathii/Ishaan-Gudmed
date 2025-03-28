@@ -5,7 +5,13 @@ import { notifyClients } from "../services/socket.js";
 const getOrCreateSettings = async () => {
   let settings = await ClientSettings.findOne({});
   if (!settings) {
-    settings = await ClientSettings.create({});
+    settings = await ClientSettings.create({
+      clients: [],
+      swiperSettings: {
+        slidesPerView: { default: 4, breakpoints: { 1200: 4, 1024: 3, 768: 3, 480: 2, 320: 2 } },
+        slidesPerGroup: { default: 4, breakpoints: { 1200: 4, 1024: 3, 768: 3, 480: 2, 320: 2 } },
+      },
+    });
   }
   return settings;
 };
@@ -16,6 +22,7 @@ export const getClientSettings = async (req, res) => {
     const settings = await getOrCreateSettings();
     res.status(200).json(settings);
   } catch (error) {
+    console.error("Error fetching client settings:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching client settings",
@@ -33,9 +40,8 @@ export const updateClientSettings = async (req, res) => {
       { new: true, upsert: true, runValidators: true }
     );
 
-    console.log("Backend: Emitting clientSettingsUpdated event", updatedSettings);
-    // Wrap the updatedSettings in a data field to match the API response structure
-    notifyClients("clientSettingsUpdated", { data: updatedSettings });
+    console.log("Backend: Emitting clientSettings_updated event:", updatedSettings);
+    notifyClients("clientSettings", "updated", updatedSettings);
 
     res.status(200).json({
       success: true,
@@ -43,6 +49,7 @@ export const updateClientSettings = async (req, res) => {
       data: updatedSettings,
     });
   } catch (error) {
+    console.error("Error updating client settings:", error);
     res.status(500).json({
       success: false,
       message: "Error updating client settings",

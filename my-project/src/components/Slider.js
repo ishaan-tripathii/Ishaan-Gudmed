@@ -1,21 +1,95 @@
+// src/components/Slider.js
 import React, { useState, useEffect, useRef } from "react";
-import AliceCarousel from "react-alice-carousel";
-import "react-alice-carousel/lib/alice-carousel.css";
+import AliceCarousel from "react-alice-carousel"; // Corrected import
+import "react-alice-carousel/lib/alice-carousel.css"; // Import CSS
 import "animate.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import { usePagesContext } from "../contexts/PagesContext";
+import io from "socket.io-client";
+import axios from "axios";
+import config from "../config/config";
+
+// API and Socket.IO configuration
+const API_BASE_URL = config.apiBaseUrl;
+const socket = io(config.socketBaseUrl, {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
+
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 const Slider = () => {
-  const { loading, error, getSliderPages } = usePagesContext();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const carouselRef = useRef();
   const intervalRef = useRef(null);
 
-  const data = getSliderPages();
+  useEffect(() => {
+    const fetchSliderPages = async () => {
+      try {
+        const response = await api.get("/pages");
+        setData(response.data || []);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load slider pages");
+        setLoading(false);
+      }
+    };
 
-  // Handle screen size changes
+    fetchSliderPages();
+
+    socket.on("connect", () => {
+      // Handle connection
+    });
+
+    socket.on("pageCreated", (newPage) => {
+      setData((prev) => [...prev, newPage]);
+    });
+
+    socket.on("pageUpdated", (updatedPage) => {
+      setData((prev) =>
+        prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
+      );
+    });
+
+    socket.on("pageDeleted", (slug) => {
+      setData((prev) => prev.filter((page) => page.slug !== slug));
+    });
+
+    socket.on("connect_error", (err) => {
+      // Handle connection error
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("pageCreated");
+      socket.off("pageUpdated");
+      socket.off("pageDeleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const updateScreenSize = () => setIsMobile(window.innerWidth < 768);
     updateScreenSize();
@@ -23,7 +97,6 @@ const Slider = () => {
     return () => window.removeEventListener("resize", updateScreenSize);
   }, []);
 
-  // Auto-slide logic
   useEffect(() => {
     const startAutoSlide = () => {
       intervalRef.current = setInterval(() => {
@@ -36,7 +109,6 @@ const Slider = () => {
     return () => clearInterval(intervalRef.current);
   }, [isClicked, data.length]);
 
-  // Handle manual interaction
   const handleClick = () => {
     setIsClicked(true);
     clearInterval(intervalRef.current);
@@ -54,7 +126,6 @@ const Slider = () => {
   const handleNext = () => carouselRef.current?.slideNext();
   const handlePrev = () => carouselRef.current?.slidePrev();
 
-  // Carousel settings
   const carouselSettings = {
     autoPlay: false,
     infinite: data.length > 1,
@@ -68,7 +139,6 @@ const Slider = () => {
     },
   };
 
-  // Render title with gradient for specified words
   const renderTitle = (title, gradientWords, gradientClass) => {
     if (!title) return null;
     const lines = title.split("\n");
@@ -94,7 +164,6 @@ const Slider = () => {
     });
   };
 
-  // Render formatted title with line breaks
   const renderFormattedTitle = (title, gradientWords, gradientClass) => {
     if (!title) return null;
     const safeTitle = title;

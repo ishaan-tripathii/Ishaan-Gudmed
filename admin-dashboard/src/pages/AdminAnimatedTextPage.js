@@ -1,12 +1,26 @@
+// src/components/AdminAnimatedTextPage.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
+import io from "socket.io-client";
+import axios from "axios";
+import config from "../config/config"; // Adjust the path to the actual location of the config file
 
-const socket = io("http://localhost:5000");
+// API and Socket.IO configuration
+const API_BASE_URL = config.apiBaseUrl;
+const socket = io(config.socketBaseUrl, {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+});
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 const AdminAnimatedTextPage = () => {
-  const [animatedText, setAnimatedText] = useState({
+  const defaultData = {
     redMarquee: [
       { text: "Faster Discharges = Higher Bed Turnover ⏩", icon: "FaRobot" },
       { text: "Real-Time Digital Prescription 📑", icon: "FaPrescription" },
@@ -17,7 +31,9 @@ const AdminAnimatedTextPage = () => {
       { text: "Improved OPD Management 🏥", icon: "FaUserMd" },
       { text: "Automated Patient Engagement", icon: "FaRobot" },
     ],
-  });
+  };
+
+  const [animatedText, setAnimatedText] = useState(defaultData);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -25,25 +41,48 @@ const AdminAnimatedTextPage = () => {
 
   const fetchAnimatedText = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/animated-text");
-      setAnimatedText({
-        redMarquee: response.data.redMarquee || animatedText.redMarquee,
-        blackMarquee: response.data.blackMarquee || animatedText.blackMarquee,
+      const response = await api.get("/animated-text", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setLoading(false);
+      setAnimatedText({
+        redMarquee: response.data.redMarquee || defaultData.redMarquee,
+        blackMarquee: response.data.blackMarquee || defaultData.blackMarquee,
+      });
     } catch (err) {
-      setError(err.message || "Failed to fetch animated text data");
+      setError("Failed to fetch animated text");
+      setAnimatedText(defaultData);
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchAnimatedText();
-    socket.on("animatedTextUpdated", () => {
-      fetchAnimatedText();
+
+    // Socket.IO setup
+    socket.on("connect", () => {
+      console.log("Socket.IO connected:", socket.id);
+    });
+
+    socket.on("animatedText_updated", (updatedData) => {
+      setAnimatedText({
+        redMarquee: updatedData.redMarquee,
+        blackMarquee: updatedData.blackMarquee,
+      });
       toast.success("Animated text updated in real-time!");
     });
-    return () => socket.off("animatedTextUpdated");
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket.IO connection error:", err.message);
+    });
+
+    // Cleanup
+    return () => {
+      socket.off("connect");
+      socket.off("animatedText_updated");
+      socket.off("connect_error");
+    };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -55,12 +94,15 @@ const AdminAnimatedTextPage = () => {
     }
     setIsSaving(true);
     try {
-      await axios.put("http://localhost:5000/api/animated-text", animatedText, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.put(
+        "/animated-text",
+        animatedText,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAnimatedText(response.data);
       toast.success("Changes saved successfully!");
-      await fetchAnimatedText();
       setError("");
+      // Socket.IO will handle the real-time update
     } catch (err) {
       setError(err.response?.data?.message || "Error updating animated text data");
       toast.error(err.response?.data?.message || "Failed to save changes.");
@@ -105,7 +147,6 @@ const AdminAnimatedTextPage = () => {
         {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Red Marquee Section */}
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Red Marquee (Right-to-Left)</h2>
             {animatedText.redMarquee.map((item, index) => (
@@ -116,7 +157,6 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("redMarquee", index, "text", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Text (e.g., Faster Discharges = Higher Bed Turnover ⏩)"
-                  
                 />
                 <input
                   type="text"
@@ -124,7 +164,6 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("redMarquee", index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon (e.g., FaRobot)"
-                 
                 />
                 <button
                   type="button"
@@ -144,7 +183,6 @@ const AdminAnimatedTextPage = () => {
             </button>
           </div>
 
-          {/* Black Marquee Section */}
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Black Marquee (Left-to-Right)</h2>
             {animatedText.blackMarquee.map((item, index) => (
@@ -155,7 +193,6 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("blackMarquee", index, "text", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Text (e.g., Direct Pharmacy Integration for more revenues 💰)"
-                  
                 />
                 <input
                   type="text"
@@ -163,7 +200,6 @@ const AdminAnimatedTextPage = () => {
                   onChange={(e) => handleItemChange("blackMarquee", index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon (e.g., FaCapsules)"
-                  
                 />
                 <button
                   type="button"
@@ -187,9 +223,8 @@ const AdminAnimatedTextPage = () => {
             <button
               type="submit"
               disabled={isSaving}
-              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${
-                isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
-              }`}
+              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
+                }`}
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </button>

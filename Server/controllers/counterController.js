@@ -30,12 +30,12 @@ export const updateCounter = async (req, res) => {
     if (!data) {
       const newData = new Counter(req.body);
       await newData.save();
-      notifyClients("counterUpdated");
+      notifyClients("counter", "updated", newData); // Use componentType and eventType
       return res.status(201).json(newData);
     }
     Object.assign(data, req.body);
     await data.save();
-    notifyClients("counterUpdated");
+    notifyClients("counter", "updated", data); // Use componentType and eventType
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ message: "Error updating counter data", error });

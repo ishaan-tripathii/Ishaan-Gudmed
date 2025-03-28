@@ -3,12 +3,8 @@ import axios from "axios";
 import io from "socket.io-client";
 import { Trash2, PlusCircle, Edit2 } from "lucide-react";
 import { motion } from "framer-motion";
-import toast, { Toaster } from "react-hot-toast"; // Import react-hot-toast
-
-const socket = io("http://localhost:5000", {
-  autoConnect: true,
-  reconnection: true,
-});
+import toast, { Toaster } from "react-hot-toast";
+import config from "../config/config"; // Import config
 
 const AdminAiPage = () => {
   const token = localStorage.getItem("token");
@@ -26,18 +22,19 @@ const AdminAiPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [editPageId, setEditPageId] = useState(null);
 
+  // Define fetchPages outside of useEffect so it’s accessible everywhere
   const fetchPages = async () => {
     setLoading(true);
     try {
       if (!token) throw new Error("Please log in to view pages.");
-      const response = await axios.get("http://localhost:5000/api/ai-pages", {
+      const response = await axios.get(`${config.apiBaseUrl}/api/ai-pages`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const fetchedPages = Array.isArray(response.data.data)
         ? response.data.data
         : Array.isArray(response.data)
-        ? response.data
-        : [];
+          ? response.data
+          : [];
       setPages(fetchedPages);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || "Failed to fetch pages");
@@ -48,44 +45,51 @@ const AdminAiPage = () => {
   };
 
   useEffect(() => {
-    fetchPages();
+    const socket = io(config.socketBaseUrl, {
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    fetchPages(); // Call fetchPages on mount or token change
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+      // Removed console.log
+    });
+
+    socket.on("ai_created", (newPage) => {
+      setPages((prev) => [...prev, newPage]);
+      toast.success("New AI page added in real-time!");
+    });
+
+    socket.on("ai_updated", (updatedPage) => {
+      setPages((prev) =>
+        prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
+      );
+      toast.success("AI page updated in real-time!");
+    });
+
+    socket.on("ai_deleted", (deletedPage) => {
+      setPages((prev) => prev.filter((page) => page._id !== deletedPage.id));
+      toast.success("AI page deleted in real-time!");
     });
 
     socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    socket.on("aiPageUpdated", (updatedPage) => {
-      console.log("Socket received aiPageUpdated:", updatedPage);
-      setPages((prevPages) => {
-        const currentPages = Array.isArray(prevPages) ? prevPages : [];
-        if (updatedPage.deleted) {
-          return currentPages.filter((page) => page._id !== updatedPage._id);
-        }
-        const exists = currentPages.some((page) => page._id === updatedPage._id);
-        if (exists) {
-          return currentPages.map((page) =>
-            page._id === updatedPage._id ? updatedPage : page
-          );
-        } else {
-          return [...currentPages, updatedPage];
-        }
-      });
-      toast.success("Page updated in real-time");
-    });
-
-    socket.on("whyGudMedUpdated", (updatedPage) => {
-      console.log("Socket received whyGudMedUpdated:", updatedPage);
+      // Removed console.error
     });
 
     return () => {
-      socket.off("aiPageUpdated");
-      socket.off("whyGudMedUpdated");
       socket.off("connect");
+      socket.off("ai_created");
+      socket.off("ai_updated");
+      socket.off("ai_deleted");
       socket.off("connect_error");
+      socket.disconnect();
     };
   }, [token]);
 
@@ -95,11 +99,11 @@ const AdminAiPage = () => {
       const updatedSections = formData.sections.map((section, sIdx) =>
         sIdx === sectionIndex
           ? {
-              ...section,
-              cards: section.cards.map((card, cIdx) =>
-                cIdx === cardIndex ? { ...card, [name]: value } : card
-              ),
-            }
+            ...section,
+            cards: section.cards.map((card, cIdx) =>
+              cIdx === cardIndex ? { ...card, [name]: value } : card
+            ),
+          }
           : section
       );
       setFormData({ ...formData, sections: updatedSections });
@@ -138,9 +142,9 @@ const AdminAiPage = () => {
     const updatedSections = formData.sections.map((section, sIdx) =>
       sIdx === sectionIndex
         ? {
-            ...section,
-            cards: [...section.cards, { icon: "", color: "", title: "", description: "" }],
-          }
+          ...section,
+          cards: [...section.cards, { icon: "", color: "", title: "", description: "" }],
+        }
         : section
     );
     setFormData({ ...formData, sections: updatedSections });
@@ -150,11 +154,11 @@ const AdminAiPage = () => {
     const updatedSections = formData.sections.map((section, sIdx) =>
       sIdx === sectionIndex
         ? {
-            ...section,
-            cards: section.cards.filter((_, cIdx) => cIdx !== cardIndex).length
-              ? section.cards.filter((_, cIdx) => cIdx !== cardIndex)
-              : [{ icon: "", color: "", title: "", description: "" }],
-          }
+          ...section,
+          cards: section.cards.filter((_, cIdx) => cIdx !== cardIndex).length
+            ? section.cards.filter((_, cIdx) => cIdx !== cardIndex)
+            : [{ icon: "", color: "", title: "", description: "" }],
+        }
         : section
     );
     setFormData({ ...formData, sections: updatedSections });
@@ -169,23 +173,18 @@ const AdminAiPage = () => {
 
     setLoading(true);
     try {
-      let response;
       if (editMode) {
-        response = await axios.put(
-          `http://localhost:5000/api/ai-pages/${editPageId}`,
-          formData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.put(`${config.apiBaseUrl}/api/ai-pages/${editPageId}`, formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         toast.success("AI Page updated successfully");
-        socket.emit("aiPageUpdated", response.data.data);
       } else {
-        response = await axios.post("http://localhost:5000/api/ai-pages", formData, {
+        await axios.post(`${config.apiBaseUrl}/api/ai-pages`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         toast.success("AI Page created successfully");
-        socket.emit("aiPageUpdated", response.data.data);
       }
-      await fetchPages();
+      await fetchPages(); // Now accessible here
       resetForm();
     } catch (error) {
       toast.error(error.response?.data?.message || "Error saving AI page");
@@ -204,16 +203,16 @@ const AdminAiPage = () => {
       slug: page.slug || "",
       sections: Array.isArray(page.sections)
         ? page.sections.map((section) => ({
-            cardType: section.cardType || "highlight",
-            cards: Array.isArray(section.cards)
-              ? section.cards.map((card) => ({
-                  icon: card.icon || "",
-                  color: card.color || "",
-                  title: card.title || "",
-                  description: card.description || "",
-                }))
-              : [{ icon: "", color: "", title: "", description: "" }],
-          }))
+          cardType: section.cardType || "highlight",
+          cards: Array.isArray(section.cards)
+            ? section.cards.map((card) => ({
+              icon: card.icon || "",
+              color: card.color || "",
+              title: card.title || "",
+              description: card.description || "",
+            }))
+            : [{ icon: "", color: "", title: "", description: "" }],
+        }))
         : [{ cardType: "highlight", cards: [{ icon: "", color: "", title: "", description: "" }] }],
     });
   };
@@ -223,12 +222,11 @@ const AdminAiPage = () => {
 
     setLoading(true);
     try {
-      await axios.delete(`http://localhost:5000/api/ai-pages/${pageId}`, {
+      await axios.delete(`${config.apiBaseUrl}/api/ai-pages/${pageId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("AI Page deleted successfully");
-      socket.emit("aiPageUpdated", { _id: pageId, deleted: true });
-      await fetchPages();
+      await fetchPages(); // Now accessible here
     } catch (error) {
       toast.error(error.response?.data?.message || "Error deleting AI page");
     } finally {
@@ -257,7 +255,7 @@ const AdminAiPage = () => {
       exit={{ opacity: 0 }}
       className="container mx-auto p-6 max-w-4xl"
     >
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} /> {/* Add Toaster */}
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       <div className="bg-white rounded-lg p-6">
         <h1 className="text-3xl font-bold mb-6">AI Page Manager</h1>
 
@@ -304,7 +302,9 @@ const AdminAiPage = () => {
             />
           </div>
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Slug</label>
+            <label className="block text-gray-700 font-medium mb-2
+
+">Slug</label>
             <input
               type="text"
               name="slug"
@@ -426,9 +426,8 @@ const AdminAiPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ${
-                loading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ${loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
             >
               {loading ? "Saving..." : editMode ? "Update Page" : "Create Page"}
             </button>

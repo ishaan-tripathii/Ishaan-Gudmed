@@ -1,13 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { RefreshCw, Edit, Trash2, PlusCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useSocket } from "../../hooks/useSocket";
 import { ToastContainer, toast } from "react-toastify";
-import Button from "../common/Button";
 import Modal from "../common/Modal";
 import Card from "../common/Card";
 import PageForm from "../PageForm";
-import { useApi } from "../../hooks/useApi";
+import axios from "axios";
+import io from "socket.io-client";
+import config from "../../config/config"; // Adjust the path if needed
+
+const api = axios.create({
+  baseURL: `${config.apiBaseUrl}/api`,
+  headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+const Button = ({ variant, icon, children, onClick }) => {
+  const baseStyles = "px-4 py-2 rounded text-sm font-medium flex items-center gap-2";
+  const variants = {
+    primary: "bg-blue-500 text-white hover:bg-blue-600",
+    secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
+    danger: "bg-red-500 text-white hover:bg-red-600",
+    icon: "p-2 bg-transparent text-gray-600 hover:bg-gray-100 rounded-full",
+  };
+
+  return (
+    <button
+      className={`${baseStyles} ${variants[variant] || ""}`}
+      onClick={onClick}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+};
 
 const SliderManager = () => {
   const [pages, setPages] = useState([]);
@@ -17,42 +51,76 @@ const SliderManager = () => {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  const { get, delete: deleteRequest } = useApi();
+  useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-  const { socket } = useSocket({
-    contentUpdated: () => {
-      fetchPages();
-      setMessage("Content updated in real-time");
+    const fetchPages = async () => {
+      try {
+        const response = await api.get("/pages");
+        setPages(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        setMessage("Error fetching pages");
+        setMessageType("error");
+      }
+    };
+
+    fetchPages();
+
+    socket.on("connect", () => {
+      setMessage("Socket.IO connected");
+      setMessageType("info");
+    });
+
+    socket.on("pageCreated", (newPage) => {
+      setPages((prev) => [...prev, newPage]);
+      setMessage("New slide created in real-time!");
       setMessageType("success");
-    }
-  });
+    });
 
-  const fetchPages = async () => {
-    try {
-      const data = await get("/pages");
-      setPages(data);
-    } catch (error) {
-      setMessage("Error fetching pages");
+    socket.on("pageUpdated", (updatedPage) => {
+      setPages((prev) =>
+        prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
+      );
+      setMessage("Slide updated in real-time!");
+      setMessageType("success");
+    });
+
+    socket.on("pageDeleted", (slug) => {
+      setPages((prev) => prev.filter((page) => page.slug !== slug));
+      setMessage("Slide deleted in real-time!");
+      setMessageType("success");
+    });
+
+    socket.on("connect_error", (err) => {
+      setMessage("Socket.IO connection error");
       setMessageType("error");
-    }
-  };
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("pageCreated");
+      socket.off("pageUpdated");
+      socket.off("pageDeleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, []);
 
   const handleDelete = async (id) => {
     try {
-      await deleteRequest(`/pages/${id}`);
+      await api.delete(`/pages/${id}`);
       setMessage("Page deleted successfully");
       setMessageType("success");
-      fetchPages();
       setDeleteId(null);
     } catch (error) {
       setMessage("Error deleting page");
       setMessageType("error");
     }
   };
-
-  useEffect(() => {
-    fetchPages();
-  }, []);
 
   useEffect(() => {
     if (message) {
@@ -109,13 +177,22 @@ const SliderManager = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-7xl">
+      <ToastContainer />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Slider Manager</h1>
         <div className="flex gap-2">
           <Button
             variant="secondary"
             icon={<RefreshCw className="h-4 w-4" />}
-            onClick={fetchPages}
+            onClick={async () => {
+              try {
+                const response = await api.get("/pages");
+                setPages(Array.isArray(response.data) ? response.data : []);
+              } catch (error) {
+                setMessage("Error fetching pages");
+                setMessageType("error");
+              }
+            }}
           >
             Refresh
           </Button>
@@ -132,28 +209,20 @@ const SliderManager = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {message && (
-          <div
-            className={`p-4 mb-6 rounded-lg ${messageType === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-              }`}
-          >
-            {message}
-          </div>
-        )}
-      </AnimatePresence>
+      {message && (
+        <div
+          className={`p-4 mb-6 rounded-lg ${messageType === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+            }`}
+        >
+          {message}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <AnimatePresence>
-          {pages.map(renderPageCard)}
-        </AnimatePresence>
+        <AnimatePresence>{pages.map(renderPageCard)}</AnimatePresence>
       </div>
 
-      <Modal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title="Confirm Deletion"
-      >
+      <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Confirm Deletion">
         <p className="mb-6">Are you sure you want to delete this slide?</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>
@@ -170,6 +239,15 @@ const SliderManager = () => {
         onClose={() => {
           setIsFormOpen(false);
           setPageToEdit(null);
+          const fetchPages = async () => {
+            try {
+              const response = await api.get("/pages");
+              setPages(Array.isArray(response.data) ? response.data : []);
+            } catch (error) {
+              setMessage("Error fetching pages");
+              setMessageType("error");
+            }
+          };
           fetchPages();
         }}
         isOpen={isFormOpen}

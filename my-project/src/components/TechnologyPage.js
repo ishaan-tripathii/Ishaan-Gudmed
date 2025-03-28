@@ -4,8 +4,9 @@ import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import api, { ENDPOINTS } from "../utils/api";
-import { getSocket } from "../utils/socket";
+import axios from "axios";
+import io from "socket.io-client";
+import config from "../config/config";
 
 const iconMap = {
   FaHospital,
@@ -57,37 +58,54 @@ const TechnologyPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const socket = getSocket();
-
-  const fetchData = async () => {
-    try {
-      const response = await api.get(ENDPOINTS.TECHNOLOGY.LIST);
-      console.log('Technology data:', response.data);
-      setData(response.data.data[0] || null);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching Technology data:", err);
-      setError(err.message);
-      toast.error('Failed to load Technology content');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/technology`);
+        setData(response.data.data[0] || null);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        toast.error("Failed to load Technology content");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
 
-    socket.on("contentUpdated", (update) => {
-      if (update.type === "technology" && update.data?.length > 0) {
-        setData(update.data[0]);
-        toast.success("Technology content updated!");
-      }
+    socket.on("connect", () => {
+      console.log("User Socket.IO connected:", socket.id);
+    });
+
+    socket.on("technology_updated", (updatedData) => {
+      setData(updatedData);
+      toast.success("Technology content updated in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("User Socket.IO connection error:", err.message);
     });
 
     return () => {
-      socket.off("contentUpdated");
+      socket.off("connect");
+      socket.off("technology_updated");
+      socket.off("connect_error");
+      socket.disconnect();
     };
-  }, [socket]);
+  }, []);
 
   if (loading) {
     return (
@@ -115,6 +133,7 @@ const TechnologyPage = () => {
 
   return (
     <div className="bg-white min-h-screen py-12 px-6">
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1 className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500 mb-4 p-6">
           {data.title}

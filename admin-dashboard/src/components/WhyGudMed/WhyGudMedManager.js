@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import io from "socket.io-client";
-import pagesService from "../../services/api/pagesService";
+import axios from "axios";
+import config from "../../config"; // Import the config file
 
 const WhyGudMedManager = () => {
-  const [pages, setPages] = useState([]);
+  const [pages, setPages] = useState([]);// fetchning from backend 
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(null);// Stores the currently selected page.
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -16,43 +16,67 @@ const WhyGudMedManager = () => {
     cards: [],
     footer: { title: "", description: "", ctaText: "", ctaLink: "" },
   });
-  const [socket, setSocket] = useState(null);
 
-  // Fetch pages from the server
-  const fetchPages = async () => {
-    try {
-      setIsLoading(true);
-      const response = await pagesService.getWhyGudMedList();
-      setPages(response?.data || []);
-    } catch (err) {
-      console.error("Error fetching pages:", err);
-      toast.error("Failed to load pages");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Setup Socket.IO and fetch pages on mount
   useEffect(() => {
-    const newSocket = io("http://localhost:5000");
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => console.log("Socket connected"));
-    newSocket.on("whyGudMedUpdated", () => {
-      console.log("Received whyGudMedUpdated event");
-      fetchPages();
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
     });
-    newSocket.on("connect_error", (err) => console.log("Socket error:", err));
+
+    const fetchPages = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`${config.apiBaseUrl}/api/why-gudmed`); // Use config.apiBaseUrl
+        setPages(response.data.data || []);
+      } catch (err) {
+        toast.error("Failed to load pages");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
     fetchPages();
 
+    socket.on("connect", () => {
+      // Removed console.log
+    });
+
+    socket.on("whyGudMed_created", (newPage) => {
+      setPages((prev) => [...prev, newPage]);
+      toast.success("New Why GudMed page created!");
+    });
+
+    socket.on("whyGudMed_updated", (updatedPage) => {
+      setPages((prev) =>
+        prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
+      );
+      toast.success("Why GudMed page updated!");
+    });
+
+    socket.on("whyGudMed_deleted", (deletedData) => {
+      setPages((prev) => prev.filter((page) => page._id !== deletedData._id));
+      toast.info("Why GudMed page deleted!");
+    });
+
+    socket.on("connect_error", (err) => {
+      // Removed console.log
+    });
+
     return () => {
-      newSocket.off("whyGudMedUpdated");
-      newSocket.disconnect();
+      socket.off("connect");
+      socket.off("whyGudMed_created");
+      socket.off("whyGudMed_updated");
+      socket.off("whyGudMed_deleted");
+      socket.off("connect_error");
+      socket.disconnect();
     };
   }, []);
 
-  // Reset form to initial state
   const resetForm = () => {
     setFormData({
       title: "",
@@ -64,7 +88,6 @@ const WhyGudMedManager = () => {
     setCurrentPage(null);
   };
 
-  // Handle edit button click
   const handleEdit = (page) => {
     setCurrentPage(page);
     setFormData({
@@ -73,11 +96,11 @@ const WhyGudMedManager = () => {
       slug: page.slug || "",
       cards: Array.isArray(page.cards)
         ? page.cards.map((card) => ({
-            icon: card.icon || "",
-            title: card.title || "",
-            description: card.description || "",
-            points: Array.isArray(card.points) ? [...card.points] : [],
-          }))
+          icon: card.icon || "",
+          title: card.title || "",
+          description: card.description || "",
+          points: Array.isArray(card.points) ? [...card.points] : [],
+        }))
         : [],
       footer: {
         title: page.footer?.title || "",
@@ -88,33 +111,35 @@ const WhyGudMedManager = () => {
     });
   };
 
-  // Handle delete button click
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this page?")) return;
     try {
-      await pagesService.deleteWhyGudMed(id);
+      await axios.delete(`${config.apiBaseUrl}/api/why-gudmed/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }, // Add auth if needed
+      });
       toast.success("Page deleted successfully");
-      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
-      await fetchPages();
     } catch (err) {
       toast.error("Failed to delete page");
     }
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       if (currentPage) {
-        await pagesService.updateWhyGudMed(currentPage._id, formData);
+        await axios.put(
+          `${config.apiBaseUrl}/api/why-gudmed/${currentPage._id}`,
+          formData,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } } // Add auth if needed
+        );
         toast.success("Page updated successfully");
       } else {
-        await pagesService.createWhyGudMed(formData);
+        await axios.post(`${config.apiBaseUrl}/api/why-gudmed`, formData, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }, // Add auth if needed
+        });
         toast.success("Page created successfully");
       }
-      socket?.emit("whyGudMedUpdated", { type: "why-gudmed" });
-      await fetchPages();
       resetForm();
     } catch (err) {
       toast.error("Failed to save page");
@@ -123,7 +148,6 @@ const WhyGudMedManager = () => {
     }
   };
 
-  // Card handlers
   const addCard = () => {
     setFormData({
       ...formData,
@@ -144,7 +168,6 @@ const WhyGudMedManager = () => {
     setFormData({ ...formData, cards: updatedCards });
   };
 
-  // Point handlers
   const addPoint = (cardIndex) => {
     const updatedCards = formData.cards.map((card, i) =>
       i === cardIndex
@@ -158,11 +181,11 @@ const WhyGudMedManager = () => {
     const updatedCards = formData.cards.map((card, i) =>
       i === cardIndex
         ? {
-            ...card,
-            points: card.points.map((point, j) =>
-              j === pointIndex ? { ...point, [field]: value } : point
-            ),
-          }
+          ...card,
+          points: card.points.map((point, j) =>
+            j === pointIndex ? { ...point, [field]: value } : point
+          ),
+        }
         : card
     );
     setFormData({ ...formData, cards: updatedCards });
@@ -180,10 +203,9 @@ const WhyGudMedManager = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Why GudMed Manager</h1>
+      <h1 className="text-3xl font-bold flex  mb-6">Why GudMed Manager</h1>
       <ToastContainer />
 
-      {/* Form Section */}
       <h2 className="text-2xl font-semibold mb-4">
         {currentPage ? "Edit Page" : "Create New Page"}
       </h2>
@@ -219,74 +241,76 @@ const WhyGudMedManager = () => {
         </div>
 
         <h3 className="text-xl font-semibold mb-2">Cards</h3>
-        {Array.isArray(formData.cards) && formData.cards.map((card, cardIndex) => (
-          <div key={cardIndex} className="mb-4 p-4 border rounded">
-            <input
-              type="text"
-              placeholder="Icon (e.g., FaClock)"
-              value={card.icon}
-              onChange={(e) => handleCardChange(cardIndex, "icon", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="Title"
-              value={card.title}
-              onChange={(e) => handleCardChange(cardIndex, "title", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <textarea
-              placeholder="Description"
-              value={card.description}
-              onChange={(e) => handleCardChange(cardIndex, "description", e.target.value)}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <h4 className="text-lg font-medium mb-2">Points</h4>
-            {Array.isArray(card.points) && card.points.map((point, pointIndex) => (
-              <div key={pointIndex} className="flex space-x-2 mb-2">
-                <input
-                  type="text"
-                  placeholder="Point Icon (e.g., FaClock)"
-                  value={point.icon}
-                  onChange={(e) =>
-                    handlePointChange(cardIndex, pointIndex, "icon", e.target.value)
-                  }
-                  className="w-1/3 p-2 border rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="Point Text"
-                  value={point.text}
-                  onChange={(e) =>
-                    handlePointChange(cardIndex, pointIndex, "text", e.target.value)
-                  }
-                  className="w-2/3 p-2 border rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleDeletePoint(cardIndex, pointIndex)}
-                  className="bg-red-500 text-white p-1 rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addPoint(cardIndex)}
-              className="bg-blue-500 text-white p-1 rounded mb-2"
-            >
-              Add Point
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteCard(cardIndex)}
-              className="bg-red-500 text-white p-1 rounded"
-            >
-              Delete Card
-            </button>
-          </div>
-        ))}
+        {Array.isArray(formData.cards) &&
+          formData.cards.map((card, cardIndex) => (
+            <div key={cardIndex} className="mb-4 p-4 border rounded">
+              <input
+                type="text"
+                placeholder="Icon (e.g., FaClock)"
+                value={card.icon}
+                onChange={(e) => handleCardChange(cardIndex, "icon", e.target.value)}
+                className="w-full p-2 mb-2 border rounded"
+              />
+              <input
+                type="text"
+                placeholder="Title"
+                value={card.title}
+                onChange={(e) => handleCardChange(cardIndex, "title", e.target.value)}
+                className="w-full p-2 mb-2 border rounded"
+              />
+              <textarea
+                placeholder="Description"
+                value={card.description}
+                onChange={(e) => handleCardChange(cardIndex, "description", e.target.value)}
+                className="w-full p-2 mb-2 border rounded"
+              />
+              <h4 className="text-lg font-medium mb-2">Points</h4>
+              {Array.isArray(card.points) &&
+                card.points.map((point, pointIndex) => (
+                  <div key={pointIndex} className="flex space-x-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Point Icon (e.g., FaClock)"
+                      value={point.icon}
+                      onChange={(e) =>
+                        handlePointChange(cardIndex, pointIndex, "icon", e.target.value)
+                      }
+                      className="w-1/3 p-2 border rounded"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Point Text"
+                      value={point.text}
+                      onChange={(e) =>
+                        handlePointChange(cardIndex, pointIndex, "text", e.target.value)
+                      }
+                      className="w-2/3 p-2 border rounded"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePoint(cardIndex, pointIndex)}
+                      className="bg-red-500 text-white p-1 rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              <button
+                type="button"
+                onClick={() => addPoint(cardIndex)}
+                className="bg-blue-500 text-white p-1 rounded mb-2"
+              >
+                Add Point
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCard(cardIndex)}
+                className="bg-red-500 text-white p-1 rounded"
+              >
+                Delete Card
+              </button>
+            </div>
+          ))}
         <button
           type="button"
           onClick={addCard}
@@ -356,16 +380,14 @@ const WhyGudMedManager = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className={`bg-green-500 text-white p-2 rounded ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className={`bg-green-500 text-white p-2 rounded ${isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
           >
             {isLoading ? "Saving..." : currentPage ? "Update" : "Create"} Page
           </button>
         </div>
       </form>
 
-      {/* Page List */}
       <h2 className="text-xl font-semibold mb-2">Existing Pages</h2>
       {isLoading ? (
         <div className="text-center py-4">Loading...</div>

@@ -1,47 +1,76 @@
-// src/components/KnowledgePartnerCardSection.jsx
 import React, { useState, useEffect } from "react";
-import { socket } from "../../socket";
-import api from "../../utils/api";
+import axios from "axios";
+import io from "socket.io-client";
 import OfferContentSection from "../Common/OfferContentSection";
 
 const KnowledgePartnerCardSection = () => {
-  const [settings, setSettings] = useState({
+  const defaultData = {
     partners: [],
     accreditations: [],
     twoFactorsImage: "",
-    titles: {
-      weAre: "We Are !",
-      accredited: "Accredited",
-      knowledgePartners: "Our Knowledge Partners",
-    },
-  });
+    titles: { weAre: "We Are !", accredited: "Accredited", knowledgePartners: "Our Knowledge Partners" },
+  };
+  const [data, setData] = useState(defaultData);
   const [loading, setLoading] = useState(true);
 
-  const fetchSettings = async () => {
-    try {
-      const response = await api.get("/api/knowledge-partners");
-      // Ensure titles exist in the data, fallback to defaults if not
-      setSettings({
-        ...response.data,
-        titles: {
-          weAre: response.data.titles?.weAre || "We Are !",
-          accredited: response.data.titles?.accredited || "Accredited",
-          knowledgePartners: response.data.titles?.knowledgePartners || "Our Knowledge Partners",
-        },
-        twoFactorsImage: response.data.twoFactorsImage || "", // Fallback for twoFactorsImage
-      });
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching settings:", err);
-      setLoading(false); // Still proceed to render with defaults
-    }
-  };
-
   useEffect(() => {
-    fetchSettings();
-    socket.on("knowledgePartnersUpdated", fetchSettings);
-    return () => socket.off("knowledgePartnersUpdated");
-  }, []);
+    const socket = io("http://localhost:5000", {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/knowledge-partners"); // Adjust endpoint
+        setData(response.data || defaultData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching Knowledge Partners:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    socket.on("connect", () => {
+      console.log("KnowledgePartnerCardSection Socket.IO connected:", socket.id);
+    });
+
+    socket.on("knowledgePartners_created", (newData) => {
+      console.log("Received knowledgePartners_created:", newData);
+      setData(newData);
+    });
+
+    socket.on("knowledgePartners_updated", (updatedData) => {
+      console.log("Received knowledgePartners_updated:", updatedData);
+      setData(updatedData);
+    });
+
+    socket.on("knowledgePartners_deleted", (deletedData) => {
+      console.log("Received knowledgePartners_deleted:", deletedData);
+      if (data._id === deletedData._id) {
+        setData(defaultData); // Reset to default on deletion
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("KnowledgePartnerCardSection Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("knowledgePartners_created");
+      socket.off("knowledgePartners_updated");
+      socket.off("knowledgePartners_deleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, [data._id]); // Dependency on _id to reset if deleted
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
 
@@ -51,12 +80,12 @@ const KnowledgePartnerCardSection = () => {
         {/* We Are Section */}
         <div className="text-[#2E4168] md:space-y-4 -space-y-5">
           <OfferContentSection
-            titleDesktop={settings.titles.weAre}
-            titleMobile={settings.titles.weAre}
+            titleDesktop={data.titles.weAre}
+            titleMobile={data.titles.weAre}
             className="text-xl md:text-lg lg:text-base leading-tight"
           />
           <img
-            src={settings.twoFactorsImage}
+            src={data.twoFactorsImage}
             alt="Two Factors"
             className="w-full max-w-xl object-contain transition-all duration-300 transform md:mt-4 md:ml-16 lg:ml-0"
           />
@@ -65,11 +94,11 @@ const KnowledgePartnerCardSection = () => {
         {/* Accredited Section */}
         <div className="xl:space-y-4 lg:-space-y-5 md:space-y-2 -space-y-7 text-[#2E4168]">
           <OfferContentSection
-            titleDesktop={settings.titles.accredited}
-            titleMobile={settings.titles.accredited}
+            titleDesktop={data.titles.accredited}
+            titleMobile={data.titles.accredited}
           />
           <div className="flex justify-center lg:justify-end gap-4">
-            {settings.accreditations.map((item, index) => (
+            {data.accreditations.map((item, index) => (
               <div key={index} className="text-center">
                 <img
                   src={item.image}
@@ -87,12 +116,12 @@ const KnowledgePartnerCardSection = () => {
         {/* Knowledge Partners Section */}
         <div className="text-[#2E4168] mx-auto xl:space-y-4 lg:-space-y-12 md:space-y-2 -space-y-7">
           <OfferContentSection
-            titleDesktop={settings.titles.knowledgePartners}
-            titleMobile={settings.titles.knowledgePartners}
+            titleDesktop={data.titles.knowledgePartners}
+            titleMobile={data.titles.knowledgePartners}
             className="text-7xl md:text-base lg:text-xs xl:text-base font-bold text-center mx-auto"
           />
           <div className="flex justify-center gap-4">
-            {settings.partners.map((card, index) => (
+            {data.partners.map((card, index) => (
               <div key={index} className="text-center">
                 <img
                   src={card.image}

@@ -7,7 +7,7 @@ const environments = {
   },
   production: {
     API_URL: process.env.REACT_APP_API_URL || 'https://gudmed-backend.onrender.com',
-    SOCKET_URL: process.env.REACT_APP_SOCKET_URL || 'wss://gudmed-backend.onrender.com',
+    SOCKET_URL: process.env.REACT_APP_SOCKET_URL || 'https://gudmed-backend.onrender.com',
     ENABLE_LOGS: process.env.REACT_APP_ENABLE_LOGS === 'true'
   },
   staging: {

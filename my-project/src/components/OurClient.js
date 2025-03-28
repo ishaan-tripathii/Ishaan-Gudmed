@@ -1,10 +1,12 @@
-// OurClient.jsx
 import React, { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { Autoplay } from "swiper/modules";
-import { socket } from "../socket";
-import api from "../utils/api";
+import io from "socket.io-client";
+import axios from "axios";
+import config from "../config/config"; // Updated import path
+
+const socket = io(config.SOCKET_URL, { reconnection: true });
 
 const ClientLogo = ({ src, alt }) => (
   <div className="flex justify-center items-center mx-auto w-32 h-32 lg:w-40 lg:h-40">
@@ -24,12 +26,10 @@ const OurClient = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await api.get("/api/clients");
-      console.log("Fetched client settings:", response.data);
+      const response = await axios.get(`${config.API_URL}/clients`);
       setSettings(response.data);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching client settings:", err);
       setLoading(false);
     }
   };
@@ -37,33 +37,23 @@ const OurClient = () => {
   useEffect(() => {
     fetchSettings();
 
-    socket.on("connect", () => {
-      console.log("Client: Connected to Socket.IO server");
-    });
+    socket.on("connect", () => { });
 
-    socket.on("clientSettingsUpdated", (eventData) => {
-      console.log("Client: Received clientSettingsUpdated event:", eventData);
-      const updatedSettings = eventData?.data;
+    socket.on("clientSettings_updated", (updatedSettings) => {
       if (updatedSettings && updatedSettings.clients && updatedSettings.swiperSettings) {
         setSettings(updatedSettings);
-        console.log("Client: Settings updated successfully");
       } else {
-        console.error("Client: Invalid data structure received:", eventData);
         fetchSettings();
       }
     });
 
-    socket.on("connect_error", (err) => {
-      console.error("Client: Socket.IO connection error:", err.message);
-    });
+    socket.on("connect_error", (err) => { });
 
-    socket.on("disconnect", (reason) => {
-      console.log("Client: Socket.IO disconnected:", reason);
-    });
+    socket.on("disconnect", (reason) => { });
 
     return () => {
-      socket.off("clientSettingsUpdated");
       socket.off("connect");
+      socket.off("clientSettings_updated");
       socket.off("connect_error");
       socket.off("disconnect");
     };

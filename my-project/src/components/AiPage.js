@@ -4,8 +4,9 @@ import { FiSettings, FiActivity } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import api, { ENDPOINTS } from "../utils/api";
-import { getSocket } from "../utils/socket";
+import axios from "axios";
+import io from "socket.io-client";
+import config from "../config/config";
 
 const iconMap = {
   FaHospital,
@@ -57,37 +58,57 @@ const AiPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const socket = getSocket();
-
-  const fetchData = async () => {
-    try {
-      const response = await api.get(ENDPOINTS.AI_PAGES.LIST);
-      console.log('AI data:', response.data);
-      setData(response.data.data[0] || null);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching AI data:", err);
-      setError(err.message);
-      toast.error('Failed to load AI content');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/ai-pages`);
+        console.log("AI data:", response.data);
+        setData(response.data.data[0] || null);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching AI data:", err);
+        setError(err.message);
+        toast.error("Failed to load AI content");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
 
-    socket.on("contentUpdated", (update) => {
-      if (update.type === "ai" && update.data?.length > 0) {
-        setData(update.data[0]);
-        toast.success("AI content updated!");
-      }
+    socket.on("connect", () => {
+      console.log("User Socket.IO connected:", socket.id);
+    });
+
+    socket.on("ai_updated", (updatedData) => {
+      console.log("Received ai_updated:", updatedData);
+      setData(updatedData);
+      toast.success("AI content updated in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("User Socket.IO connection error:", err.message);
     });
 
     return () => {
-      socket.off("contentUpdated");
+      socket.off("connect");
+      socket.off("ai_updated");
+      socket.off("connect_error");
+      socket.disconnect();
     };
-  }, [socket]);
+  }, []);
 
   if (loading) {
     return (
@@ -115,14 +136,14 @@ const AiPage = () => {
 
   return (
     <div className="bg-white py-12 px-6">
-      <ToastContainer />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="text-center mb-6 -mt-12 md:-mt-6">
         <h1
           className="text-4xl font-bold text-[#2E4168] relative inline-block bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text leading-normal"
-          style={{ color: data?.titleColor || '#2E4168' }}
+          style={{ color: data?.titleColor || "#2E4168" }}
         >
-          {data?.title || 'AI in Healthcare'}
-          <div className="h-1 w-32 bg-[#2E4168] bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 absolute left-1/2 -translate-x-1/2 "></div>
+          {data?.title || "AI in Healthcare"}
+          <div className="h-1 w-32 bg-[#2E4168] bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 absolute left-1/2 -translate-x-1/2"></div>
         </h1>
         <p className="text-gray-700 max-w-5xl mx-auto mt-8 text-lg mb-10 md:mx-4 xl:mx-auto">
           {data?.description}

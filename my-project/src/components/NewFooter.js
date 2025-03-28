@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { socket } from "../socket";
-import api from "../utils/api";
+import io from "socket.io-client";
+import axios from "axios";
 import { Toaster, toast } from "react-hot-toast";
+import config from "../config/config";
+
+const socket = io(config.socketBaseUrl, { reconnection: true });
 
 const NewFooter = () => {
-  const [footer, setFooter] = useState({
+  const defaultFooter = {
     copyright: {
       year: 2025,
       companyName: "Gud Medicare Solutions Private Limited",
@@ -24,18 +27,14 @@ const NewFooter = () => {
       { iconClass: "fab fa-linkedin", link: "https://www.linkedin.com/company/gudmed/" },
     ],
     logoUrl: "https://gudmed.in/static/media/Gudmed1-removebg-preview.35f892b86290e3dc089a.png",
-  });
+  };
+  const [footer, setFooter] = useState(defaultFooter);
   const [loading, setLoading] = useState(true);
 
   const fetchFooter = async () => {
     try {
-      const response = await api.get("/api/footer");
-      setFooter({
-        copyright: response.data.copyright || footer.copyright,
-        contact: response.data.contact || footer.contact,
-        socialIcons: response.data.socialIcons || footer.socialIcons,
-        logoUrl: response.data.logoUrl || footer.logoUrl,
-      });
+      const response = await axios.get(`${config.apiBaseUrl}/api/footer`);
+      setFooter(response.data || defaultFooter);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching footer data:", err);
@@ -45,12 +44,40 @@ const NewFooter = () => {
 
   useEffect(() => {
     fetchFooter();
-    socket.on("footerUpdated", () => {
-      fetchFooter();
+
+    socket.on("connect", () => {
+      console.log("Footer: Socket.IO connected");
+    });
+
+    socket.on("footer_created", (newFooter) => {
+      setFooter(newFooter);
+      toast.success("Footer created in real-time!");
+    });
+
+    socket.on("footer_updated", (updatedFooter) => {
+      setFooter(updatedFooter);
       toast.success("Footer updated in real-time!");
     });
-    return () => socket.off("footerUpdated");
-  }, []);
+
+    socket.on("footer_deleted", (deletedData) => {
+      if (footer._id === deletedData._id) {
+        setFooter(defaultFooter);
+        toast.info("Footer deleted, reset to default!");
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Footer: Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("footer_created");
+      socket.off("footer_updated");
+      socket.off("footer_deleted");
+      socket.off("connect_error");
+    };
+  }, [footer._id]);
 
   if (loading) return <div className="text-center py-10 text-white">Loading...</div>;
 

@@ -4,9 +4,10 @@ import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import AdminAiPage from "./AdminAiPage";
 import { PlusCircle, Edit, Trash2 } from "lucide-react";
+import config from "../config/config"; // Import configuration
 
 // Initialize Socket.IO client
-const socket = io("http://localhost:5000", {
+const socket = io(config.socketBaseUrl, {
   autoConnect: true,
   reconnection: true,
 });
@@ -22,13 +23,13 @@ const AiPageList = () => {
   useEffect(() => {
     const fetchPages = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/ai-pages", {
+        const response = await axios.get(`${config.apiBaseUrl}/api/ai-pages`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setPages(response.data.data || []);
       } catch (err) {
         setError("Failed to fetch AI pages");
-        console.error(err);
+        // Removed console.log
       }
     };
 
@@ -57,7 +58,7 @@ const AiPageList = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this page?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/ai-pages/${id}`, {
+        await axios.delete(`${config.apiBaseUrl}/api/ai-pages/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setPages(pages.filter((page) => page._id !== id));

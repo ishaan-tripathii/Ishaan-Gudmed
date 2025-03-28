@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import config from "../config/config"; // Import the configuration file
 
-const socket = io("http://localhost:5000", { reconnection: true });
+const socket = io(config.socketBaseUrl, { reconnection: true });
 
 const AdminClientPage = () => {
   const [settings, setSettings] = useState({
@@ -18,7 +19,7 @@ const AdminClientPage = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/clients");
+      const response = await fetch(`${config.apiBaseUrl}/api/clients`);
       if (!response.ok) throw new Error("Failed to fetch settings");
       const data = await response.json();
       setSettings(data);
@@ -36,18 +37,15 @@ const AdminClientPage = () => {
       console.log("Connected to Socket.IO server, socket ID:", socket.id);
     });
 
-    socket.on("clientSettingsUpdated", (eventData) => {
-      console.log("Frontend: Received clientSettingsUpdated event:", eventData);
-      // Extract the data field from the event payload
-      const updatedSettings = eventData?.data;
-      // Ensure the data structure matches what the state expects
+    socket.on("clientSettings_updated", (updatedSettings) => {
+      console.log("Frontend: Received clientSettings_updated event:", updatedSettings);
       if (updatedSettings && updatedSettings.clients && updatedSettings.swiperSettings) {
         setSettings(updatedSettings);
         toast.success("Settings updated in real-time!");
       } else {
-        console.error("Frontend: Invalid data structure received:", eventData);
+        console.error("Frontend: Invalid data structure received:", updatedSettings);
         toast.warn("Received invalid settings data, refetching...");
-        fetchSettings(); // Fallback to refetch if the data is invalid
+        fetchSettings();
       }
     });
 
@@ -62,8 +60,8 @@ const AdminClientPage = () => {
     });
 
     return () => {
-      socket.off("clientSettingsUpdated");
       socket.off("connect");
+      socket.off("clientSettings_updated");
       socket.off("connect_error");
       socket.off("disconnect");
     };
@@ -77,7 +75,7 @@ const AdminClientPage = () => {
       return;
     }
     try {
-      const response = await fetch("http://localhost:5000/api/clients", {
+      const response = await fetch(`${config.apiBaseUrl}/api/clients`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -190,8 +188,7 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientUp(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                      }`}
+                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
                   >
                     ↑
                   </button>
@@ -199,8 +196,7 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientDown(index)}
                     disabled={index === settings.clients.length - 1}
-                    className={`p-2 rounded-lg text-white ${index === settings.clients.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                      }`}
+                    className={`p-2 rounded-lg text-white ${index === settings.clients.length - 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
                   >
                     ↓
                   </button>
@@ -208,8 +204,7 @@ const AdminClientPage = () => {
                     type="button"
                     onClick={() => moveClientToFirst(index)}
                     disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
-                      }`}
+                    className={`p-2 rounded-lg text-white ${index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"}`}
                   >
                     Top
                   </button>

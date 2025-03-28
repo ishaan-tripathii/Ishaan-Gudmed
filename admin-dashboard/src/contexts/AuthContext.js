@@ -1,52 +1,53 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiService from '../services/api/apiService';
 
-const AuthContext = createContext();
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import apiService from '../services/api/apiService';
+import { ENDPOINTS } from '../config/api.config';
+import { useNavigate } from 'react-router-dom';
+
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
-    const [token, setToken] = useState(localStorage.getItem('token') || '');
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (token) {
-            apiService.auth.getUser()
-                .then(response => {
-                    setUser(response.user);
-                    setLoading(false);
-                })
-                .catch(() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    setToken('');
-                    setUser(null);
-                    setLoading(false);
-                });
-        } else {
+        checkAuth();
+    }, []);
+
+    const checkAuth = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const response = await apiService.get(ENDPOINTS.AUTH.USER);
+                setUser(response.data.user);
+            }
+        } catch (error) {
+            console.error('Auth check error:', error);
+            localStorage.removeItem('token');
+            setUser(null);
+        } finally {
             setLoading(false);
         }
-    }, [token]);
+    };
 
     const login = async (email, password) => {
         try {
             setLoading(true);
-            const response = await apiService.auth.login({ email, password });
-            console.log('Login response:', response);
-
-            if (response && response.token) {
-                setToken(response.token);
-                setUser(response.user);
-                localStorage.setItem('token', response.token);
-                localStorage.setItem('user', JSON.stringify(response.user));
-                navigate('/admin/dashboard');
-                return response;
+            setError(null);
+            const response = await apiService.post(ENDPOINTS.AUTH.LOGIN, { email, password });
+            if (response.data.success) {
+                localStorage.setItem('token', response.data.token);
+                setUser(response.data.user);
+                navigate('/admin/home'); // Updated route
+            } else {
+                setError(response.data.message || 'Login failed');
             }
-            throw new Error('Invalid response from server');
         } catch (error) {
             console.error('Login failed:', error);
-            throw error.response?.data || { message: "Login failed" };
+            setError(error.response?.data?.message || 'Login failed');
+            throw error;
         } finally {
             setLoading(false);
         }
@@ -55,9 +56,9 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             setLoading(true);
-            await apiService.auth.logout();
-            setToken('');
+            await apiService.post(ENDPOINTS.AUTH.LOGOUT);
             setUser(null);
+            localStorage.removeItem('token');
             navigate('/login');
         } catch (error) {
             console.error('Logout error:', error);
@@ -68,11 +69,11 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
-        token,
         loading,
+        error,
         login,
         logout,
-        isAuthenticated: !!token
+        isAuthenticated: !!user
     };
 
     return (

@@ -3,22 +3,13 @@ import { FaHospital, FaRobot, FaChartBar, FaRegPaperPlane, FaHeartbeat, FaMedkit
 import { FiSettings, FiActivity } from "react-icons/fi";
 import { PlusCircle, Edit2, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../context/AuthContext";
-import { useRealtimeUpdates } from '../../hooks/useRealtimeUpdates';
-import pagesService from '../../services/api/pagesService';
-import io from 'socket.io-client';
+import axios from "axios";
+import io from "socket.io-client";
+import config from "../../config/config"; // Adjust the relative path as needed
 
-// Use environment variable for socket connection
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-const socket = io(SOCKET_URL, {
-  autoConnect: true,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 20000,
-});
+const SOCKET_URL = config.socketBaseUrl;
 
 const iconMap = {
   FaHospital,
@@ -33,7 +24,6 @@ const iconMap = {
 };
 
 const TechnologyManager = () => {
-  const { token } = useAuth();
   const [technologies, setTechnologies] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTech, setSelectedTech] = useState(null);
@@ -48,94 +38,115 @@ const TechnologyManager = () => {
   });
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const token = localStorage.getItem("token"); // Assuming token is stored in localStorage
 
-  // Fetch technologies
-  const fetchTechnologies = async () => {
-    try {
-      setIsLoading(true);
-      const response = await pagesService.getTechnologyList();
-      const techData = response?.data || [];
-      setTechnologies(Array.isArray(techData) ? techData : []);
-    } catch (err) {
-      console.error("Error fetching technologies:", err);
-      toast.error("Failed to load technologies");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Socket event handlers
   useEffect(() => {
-    // Listen for technology updates
-    socket.on("technology:create", (newTech) => {
-      console.log("New technology created:", newTech);
-      setTechnologies(prev => [...prev, newTech]);
+    const socket = io(SOCKET_URL, {
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
     });
 
-    socket.on("technology:update", (updatedTech) => {
-      console.log("Technology updated:", updatedTech);
-      setTechnologies(prev =>
-        prev.map(tech => tech._id === updatedTech._id ? updatedTech : tech)
-      );
-    });
-
-    socket.on("technology:delete", (deletedTech) => {
-      console.log("Technology deleted:", deletedTech);
-      setTechnologies(prev =>
-        prev.filter(tech => tech._id !== deletedTech._id)
-      );
-    });
-
-    // Cleanup socket listeners
-    return () => {
-      socket.off("technology:create");
-      socket.off("technology:update");
-      socket.off("technology:delete");
+    const fetchTechnologies = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`${config.apiBaseUrl}/api/technology`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const techData = response.data.data || [];
+        setTechnologies(Array.isArray(techData) ? techData : []);
+      } catch (err) {
+        toast.error("Failed to load technologies");
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, []);
 
-  useEffect(() => {
     fetchTechnologies();
-  }, []);
+
+    socket.on("connect", () => {
+      // Removed console.log
+    });
+
+    socket.on("technology_created", (newTech) => {
+      setTechnologies((prev) => [...prev, newTech]);
+      toast.success("New technology added in real-time!");
+    });
+
+    socket.on("technology_updated", (updatedTech) => {
+      setTechnologies((prev) =>
+        prev.map((tech) => (tech._id === updatedTech._id ? updatedTech : tech))
+      );
+      toast.success("Technology updated in real-time!");
+    });
+
+    socket.on("technology_deleted", (deletedTech) => {
+      setTechnologies((prev) => prev.filter((tech) => tech._id !== deletedTech.id));
+      toast.success("Technology deleted in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      // Removed console.log
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("technology_created");
+      socket.off("technology_updated");
+      socket.off("technology_deleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, [token]);
 
   const handleCreate = async (data) => {
     try {
-      const response = await pagesService.createTechnology(data);
-      // Emit socket event for real-time update
-      socket.emit("technology:create", response.data);
+      const response = await axios.post(`${config.apiBaseUrl}/api/technology`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTechnologies((prev) => [...prev, response.data.data]);
       toast.success("Technology created successfully");
-      setIsEditing(false);
+      return response.data.data;
     } catch (err) {
       toast.error("Failed to create technology");
+      throw err;
     }
   };
 
   const handleUpdate = async (id, data) => {
     try {
-      const response = await pagesService.updateTechnology(id, data);
-      // Emit socket event for real-time update
-      socket.emit("technology:update", response.data);
+      const response = await axios.put(`${config.apiBaseUrl}/api/technology/${id}`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTechnologies((prev) =>
+        prev.map((tech) => (tech._id === id ? response.data.data : tech))
+      );
       toast.success("Technology updated successfully");
-      setIsEditing(false);
-      setSelectedTech(null);
+      return response.data.data;
     } catch (err) {
       toast.error("Failed to update technology");
+      throw err;
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this technology?")) return;
     try {
-      await pagesService.deleteTechnology(id);
-      // Emit socket event for real-time update
-      socket.emit("technology:delete", { _id: id });
+      await axios.delete(`${config.apiBaseUrl}/api/technology/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTechnologies((prev) => prev.filter((tech) => tech._id !== id));
       toast.success("Technology deleted successfully");
     } catch (err) {
       toast.error("Failed to delete technology");
     }
   };
 
-  // Handle form input changes
   const handleChange = (e, sectionIndex, cardIndex) => {
     const { name, value } = e.target;
     if (sectionIndex !== undefined && cardIndex !== undefined) {
@@ -151,7 +162,6 @@ const TechnologyManager = () => {
     }
   };
 
-  // Add a new section
   const addSection = () => {
     setFormData({
       ...formData,
@@ -162,7 +172,6 @@ const TechnologyManager = () => {
     });
   };
 
-  // Remove a section
   const removeSection = (sectionIndex) => {
     const updatedSections = formData.sections.filter((_, idx) => idx !== sectionIndex);
     setFormData({
@@ -171,14 +180,12 @@ const TechnologyManager = () => {
     });
   };
 
-  // Add a new card to a section
   const addCard = (sectionIndex) => {
     const updatedSections = [...formData.sections];
     updatedSections[sectionIndex].cards.push({ icon: "", color: "", title: "", description: "" });
     setFormData({ ...formData, sections: updatedSections });
   };
 
-  // Remove a card from a section
   const removeCard = (sectionIndex, cardIndex) => {
     const updatedSections = [...formData.sections];
     updatedSections[sectionIndex].cards = updatedSections[sectionIndex].cards.filter((_, idx) => idx !== cardIndex);
@@ -188,7 +195,6 @@ const TechnologyManager = () => {
     setFormData({ ...formData, sections: updatedSections });
   };
 
-  // Handle form submission (create or update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.description || !formData.slug) {
@@ -199,11 +205,10 @@ const TechnologyManager = () => {
 
     setIsLoading(true);
     try {
-      let response;
       if (isEditing) {
-        response = await handleUpdate(selectedTech, formData);
+        await handleUpdate(selectedTech, formData);
       } else {
-        response = await handleCreate(formData);
+        await handleCreate(formData);
       }
       setMessageType("success");
       resetForm();
@@ -215,7 +220,6 @@ const TechnologyManager = () => {
     }
   };
 
-  // Populate form with technology data for editing
   const handleEdit = (tech) => {
     setIsEditing(true);
     setSelectedTech(tech._id);
@@ -235,7 +239,6 @@ const TechnologyManager = () => {
     });
   };
 
-  // Reset the form to its initial state
   const resetForm = () => {
     setFormData({
       title: "",
@@ -247,6 +250,8 @@ const TechnologyManager = () => {
     });
     setIsEditing(false);
     setSelectedTech(null);
+    setMessage("");
+    setMessageType("");
   };
 
   return (
@@ -254,14 +259,12 @@ const TechnologyManager = () => {
       <div className="bg-white rounded-lg p-6">
         <h1 className="text-3xl font-bold mb-6">Technology Manager</h1>
 
-        {/* Message Display */}
         {message && (
           <div className={`p-4 mb-4 rounded-lg ${messageType === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
             {message}
           </div>
         )}
 
-        {/* Form for Creating or Editing Technology */}
         <h2 className="text-2xl font-semibold mb-4">{isEditing ? "Edit Technology" : "Create New Technology"}</h2>
         <form onSubmit={handleSubmit} className="mb-8">
           <div className="mb-4">
@@ -414,7 +417,6 @@ const TechnologyManager = () => {
           </div>
         </form>
 
-        {/* List of Existing Technologies */}
         <h2 className="text-2xl font-bold mb-4">Existing Technologies</h2>
         {isLoading ? (
           <div className="text-center py-4">Loading...</div>

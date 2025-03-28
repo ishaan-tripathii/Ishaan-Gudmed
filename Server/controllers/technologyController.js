@@ -31,7 +31,7 @@ export const getTechnologyPages = async (req, res) => {
 export const createTechnologyPage = async (req, res) => {
   try {
     const page = await TechnologyPage.create(req.body);
-    notifyClients("contentUpdated", page); // Emit event
+    notifyClients("technology", "created", page); // Fixed signature
     return res.status(201).json({ success: true, message: "Page created successfully", data: page });
   } catch (error) {
     return res.status(400).json({ success: false, message: "Failed to create page", error: error.message });
@@ -52,7 +52,7 @@ export const updateTechnologyPage = async (req, res) => {
     if (!updatedPage) {
       return res.status(404).json({ success: false, message: "Page not found" });
     }
-    notifyClients("contentUpdated", updatedPage); // Emit event
+    notifyClients("technology", "updated", updatedPage); // Fixed signature
     res.status(200).json({ success: true, message: "Page updated successfully", data: updatedPage });
   } catch (error) {
     res.status(400).json({ success: false, message: "Failed to update page", error: error.message });
@@ -69,7 +69,7 @@ export const deleteTechnologyPage = async (req, res) => {
     if (!deletedPage) {
       return res.status(404).json({ success: false, message: "Page not found" });
     }
-    notifyClients("contentUpdated", { id: deletedPage._id }); // Emit event
+    notifyClients("technology", "deleted", { id: deletedPage._id }); // Fixed signature
     res.status(200).json({ success: true, message: "Page deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error", error: error.message });

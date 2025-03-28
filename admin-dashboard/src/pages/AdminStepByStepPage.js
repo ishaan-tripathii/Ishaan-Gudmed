@@ -1,48 +1,79 @@
 import React, { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 import axios from "axios";
-import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
-
-const socket = io("http://localhost:5000");
+import config from "../config/config"; // Import the configuration file
 
 const AdminStepByStepPage = () => {
   const [stepByStep, setStepByStep] = useState({
     heading: "🔧 HOW WE WORKS?",
     subheading: "Simplifying Healthcare with GudMed: 🔧",
     description:
-      "At GudMed, we believe technology should enhance your work, not complicate it. Our solution keeps it simple and effective.",
+      "At GudMed, we believe technology should enhance your work, not complicate it.",
     steps: [],
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false); // For save button animation
+  const [isSaving, setIsSaving] = useState(false);
   const token = localStorage.getItem("token");
 
-  const fetchStepByStep = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/step-by-step");
-      setStepByStep({
-        heading: response.data.heading || "🔧 HOW WE WORKS?",
-        subheading: response.data.subheading || "Simplifying Healthcare with GudMed: 🔧",
-        description:
-          response.data.description ||
-          "At GudMed, we believe technology should enhance your work, not complicate it.",
-        steps: response.data.steps || [],
-      });
-      setLoading(false);
-    } catch (err) {
-      setError(err.message || "Failed to fetch step-by-step data");
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    // Establish Socket.IO connection
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    // Fetch initial data
+    const fetchStepByStep = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/step-by-step`);
+        setStepByStep({
+          heading: response.data.heading || "🔧 HOW WE WORKS?",
+          subheading: response.data.subheading || "Simplifying Healthcare with GudMed: 🔧",
+          description:
+            response.data.description ||
+            "At GudMed, we believe technology should enhance your work, not complicate it.",
+          steps: response.data.steps || [],
+        });
+        setLoading(false);
+      } catch (err) {
+        setError(err.message || "Failed to fetch step-by-step data");
+        setLoading(false);
+      }
+    };
+
     fetchStepByStep();
-    socket.on("stepByStepUpdated", () => {
-      fetchStepByStep();
+
+    // Socket.IO event listeners
+    socket.on("step_by_step_update", (updatedData) => {
+      setStepByStep(updatedData);
       toast.success("Step-by-step data updated in real-time!");
     });
-    return () => socket.off("stepByStepUpdated");
+
+    socket.on("step_by_step_create", (newData) => {
+      setStepByStep(newData);
+      toast.success("New step-by-step data created!");
+    });
+
+    socket.on("step_by_step_delete", () => {
+      setStepByStep({ heading: "", subheading: "", description: "", steps: [] });
+      toast.success("Step-by-step data deleted!");
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.off("step_by_step_update");
+      socket.off("step_by_step_create");
+      socket.off("step_by_step_delete");
+      socket.disconnect();
+    };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -54,17 +85,16 @@ const AdminStepByStepPage = () => {
     }
     setIsSaving(true);
     try {
-      await axios.put("http://localhost:5000/api/step-by-step", stepByStep, {
+      await axios.put(`${config.apiBaseUrl}/api/step-by-step`, stepByStep, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Changes saved successfully!");
-      await fetchStepByStep();
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Error updating step-by-step data");
       toast.error(err.response?.data?.message || "Failed to save changes.");
     } finally {
-      setTimeout(() => setIsSaving(false), 500); // Reset animation after 500ms
+      setIsSaving(false);
     }
   };
 
@@ -192,7 +222,6 @@ const AdminStepByStepPage = () => {
                   onChange={(e) => handleStepChange(index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon URL (e.g., https://example.com/icon.png)"
-                  required
                 />
                 <div className="flex space-x-3 mt-4">
                   <button
@@ -234,9 +263,8 @@ const AdminStepByStepPage = () => {
             <button
               type="submit"
               disabled={isSaving}
-              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${
-                isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
-              }`}
+              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
+                }`}
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </button>

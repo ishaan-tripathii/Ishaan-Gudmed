@@ -2,16 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
+import config from "../config/config"; // Import the configuration file
 
-// Initialize Socket.IO connection with reconnection enabled
-const socket = io("http://localhost:5000", {
+const socket = io(config.socketBaseUrl, {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
 });
 
 const AdminFooterPage = () => {
-  const [footer, setFooter] = useState({
+  const defaultFooter = {
     copyright: {
       year: 2025,
       companyName: "Gud Medicare Solutions Private Limited",
@@ -29,23 +29,18 @@ const AdminFooterPage = () => {
       { iconClass: "fab fa-youtube", link: "https://www.youtube.com/channel/UC2qkjYWuIsmEuQ5dnMV3l9Q" },
       { iconClass: "fab fa-linkedin", link: "https://www.linkedin.com/company/gudmed/" },
     ],
-    logoUrl: "http://localhost:5000/images/gudmed-logo.png",
-  });
+    logoUrl: "https://gudmed.in/static/media/Gudmed1-removebg-preview.35f892b86290e3dc089a.png",
+  };
+  const [footer, setFooter] = useState(defaultFooter);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const token = localStorage.getItem("token");
 
-  // Fetch initial footer data
   const fetchFooter = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/footer");
-      setFooter({
-        copyright: response.data.copyright || footer.copyright,
-        contact: response.data.contact || footer.contact,
-        socialIcons: response.data.socialIcons || footer.socialIcons,
-        logoUrl: response.data.logoUrl || footer.logoUrl,
-      });
+      const response = await axios.get(`${config.apiBaseUrl}/api/footer`);
+      setFooter(response.data || defaultFooter);
       setLoading(false);
     } catch (err) {
       setError(err.message || "Failed to fetch footer data");
@@ -53,37 +48,46 @@ const AdminFooterPage = () => {
     }
   };
 
-  // Set up Socket.IO and fetch initial data
   useEffect(() => {
     fetchFooter();
 
     socket.on("connect", () => {
-      console.log("Socket.IO connected");
-    });
-    socket.on("disconnect", () => {
-      console.log("Socket.IO disconnected");
+      console.log("Admin Footer: Socket.IO connected");
     });
 
-    socket.on("footerUpdated", (updatedData) => {
-      console.log("Received footerUpdated event with data:", updatedData);
-      setFooter((prev) => ({
-        ...prev,
-        copyright: { ...updatedData.copyright },
-        contact: { ...updatedData.contact },
-        socialIcons: [...updatedData.socialIcons],
-        logoUrl: updatedData.logoUrl,
-      }));
+    socket.on("footer_created", (newFooter) => {
+      console.log("Received footer_created:", newFooter);
+      setFooter(newFooter);
+      toast.success("Footer created in real-time!");
+    });
+
+    socket.on("footer_updated", (updatedFooter) => {
+      console.log("Received footer_updated:", updatedFooter);
+      setFooter(updatedFooter);
       toast.success("Footer updated in real-time!");
+    });
+
+    socket.on("footer_deleted", (deletedData) => {
+      console.log("Received footer_deleted:", deletedData);
+      if (footer._id === deletedData._id) {
+        setFooter(defaultFooter);
+        toast.info("Footer deleted, reset to default!");
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Admin Footer: Socket.IO connection error:", err.message);
     });
 
     return () => {
       socket.off("connect");
-      socket.off("disconnect");
-      socket.off("footerUpdated");
+      socket.off("footer_created");
+      socket.off("footer_updated");
+      socket.off("footer_deleted");
+      socket.off("connect_error");
     };
-  }, []);
+  }, [footer._id]);
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
@@ -93,7 +97,7 @@ const AdminFooterPage = () => {
     }
     setIsSaving(true);
     try {
-      await axios.put("http://localhost:5000/api/footer", footer, {
+      await axios.put(`${config.apiBaseUrl}/api/footer`, footer, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Changes saved successfully!");
@@ -106,7 +110,28 @@ const AdminFooterPage = () => {
     }
   };
 
-  // Add a new social icon
+  const handleDelete = async () => {
+    if (!token) {
+      setError("Please log in to perform this action.");
+      toast.error("Please log in first.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete the footer data?")) return;
+    setIsSaving(true);
+    try {
+      await axios.delete(`${config.apiBaseUrl}/api/footer`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Footer deleted successfully!");
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error deleting footer data");
+      toast.error(err.response?.data?.message || "Failed to delete footer.");
+    } finally {
+      setTimeout(() => setIsSaving(false), 500);
+    }
+  };
+
   const addSocialIcon = () => {
     setFooter((prev) => ({
       ...prev,
@@ -115,7 +140,6 @@ const AdminFooterPage = () => {
     toast.success("New social icon added!");
   };
 
-  // Update a social icon field
   const handleSocialIconChange = (index, field, value) => {
     setFooter((prev) => ({
       ...prev,
@@ -125,7 +149,6 @@ const AdminFooterPage = () => {
     }));
   };
 
-  // Delete a social icon
   const handleDeleteSocialIcon = (index) => {
     if (!window.confirm("Are you sure you want to delete this social icon?")) return;
     setFooter((prev) => ({
@@ -135,7 +158,6 @@ const AdminFooterPage = () => {
     toast.success("Social icon deleted!");
   };
 
-  // Update copyright or contact fields
   const handleFieldChange = (section, field, value) => {
     setFooter((prev) => ({
       ...prev,
@@ -143,7 +165,6 @@ const AdminFooterPage = () => {
     }));
   };
 
-  // Update logo URL
   const handleLogoChange = (field, value) => {
     setFooter((prev) => ({ ...prev, [field]: value }));
   };
@@ -277,23 +298,31 @@ const AdminFooterPage = () => {
                   value={footer.logoUrl}
                   onChange={(e) => handleLogoChange("logoUrl", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., http://localhost:5000/images/gudmed-logo.png"
+                  placeholder="e.g., https://gudmed.in/static/media/Gudmed1-removebg-preview.png"
                   required
                 />
               </div>
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="text-center">
+          {/* Submit and Delete Buttons */}
+          <div className="text-center space-y-4">
             <button
               type="submit"
               disabled={isSaving}
-              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${
-                isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
-              }`}
+              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
+                }`}
             >
               {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isSaving}
+              className={`w-full sm:w-auto p-3 bg-red-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "opacity-75 cursor-not-allowed" : "hover:bg-red-700"
+                }`}
+            >
+              Delete Footer
             </button>
           </div>
         </form>

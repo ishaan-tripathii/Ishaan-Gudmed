@@ -3,44 +3,73 @@ import { motion } from "framer-motion";
 import * as FaIcons from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import api, { ENDPOINTS } from "../utils/api";
-import { getSocket } from "../utils/socket";
+import axios from "axios";
+import io from "socket.io-client";
+import config from "../config/config"; // Added import for config
 
 const WhyGudmedUnique = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const socket = getSocket();
-
-  const fetchData = async () => {
-    try {
-      const response = await api.get(ENDPOINTS.WHY_GUDMED.LIST);
-      console.log('Why Gudmed Unique data:', response.data);
-      setData(response.data.data[0] || null);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching Why Gudmed Unique data:", err);
-      setError(err.message);
-      toast.error('Failed to load Why Gudmed Unique content');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/why-gudmed`); // Adjusted endpoint
+        setData(response.data.data[0] || null);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        toast.error("Failed to load Why Gudmed Unique content");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
 
-    socket.on("contentUpdated", (update) => {
-      if (update.type === "why-gudmed" && update.data?.length > 0) {
-        setData(update.data[0]);
-        toast.success("Why Gudmed Unique updated!");
+    socket.on("connect", () => {
+    });
+
+    socket.on("whyGudMed_created", (newData) => {
+      setData(newData); // Assume single-page design
+      toast.success("Why Gudmed Unique created!");
+    });
+
+    socket.on("whyGudMed_updated", (updatedData) => {
+      setData(updatedData);
+      toast.success("Why Gudmed Unique updated!");
+    });
+
+    socket.on("whyGudMed_deleted", (deletedData) => {
+      if (data && data._id === deletedData._id) {
+        setData(null);
+        toast.info("Why Gudmed Unique page deleted!");
       }
     });
 
+    socket.on("connect_error", (err) => {
+    });
+
     return () => {
-      socket.off("contentUpdated");
+      socket.off("connect");
+      socket.off("whyGudMed_created");
+      socket.off("whyGudMed_updated");
+      socket.off("whyGudMed_deleted");
+      socket.off("connect_error");
+      socket.disconnect();
     };
-  }, [socket]);
+  }, []);
 
   const renderIcon = (iconString, size = "text-4xl") => {
     if (!iconString || typeof iconString !== "string") {
@@ -95,47 +124,49 @@ const WhyGudmedUnique = () => {
           {data.description}
         </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {data.cards && data.cards.map((card, index) => (
-            <motion.div
-              key={card._id}
-              className="bg-white rounded-xl shadow-md p-6 hover:shadow-2xl transition-shadow duration-300 ease-in-out"
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <div className="flex flex-col items-center text-center">
-                {renderIcon(card.icon, "text-4xl")}
-                <h3 className="text-2xl font-semibold text-[#2E4168] mb-4">{card.title}</h3>
-              </div>
-              <p className="text-[#2E4168] mb-4">{card.description}</p>
-              {card.points && (
-                <ul className="space-y-3">
-                  {card.points.map((point, idx) => (
-                    <li key={idx} className="flex items-center space-x-3">
-                      {renderIcon(point.icon, "text-lg")}
-                      <span className="text-gray-600">{point.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </motion.div>
-          ))}
+          {data.cards &&
+            data.cards.map((card, index) => (
+              <motion.div
+                key={card._id}
+                className="bg-white rounded-xl shadow-md p-6 hover:shadow-2xl transition-shadow duration-300 ease-in-out"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <div className="flex flex-col items-center text-center">
+                  {renderIcon(card.icon, "text-4xl")}
+                  <h3 className="text-2xl font-semibold text-[#2E4168] mb-4">{card.title}</h3>
+                </div>
+                <p className="text-[#2E4168] mb-4">{card.description}</p>
+                {card.points && (
+                  <ul className="space-y-3">
+                    {card.points.map((point, idx) => (
+                      <li key={idx} className="flex items-center space-x-3">
+                        {renderIcon(point.icon, "text-lg")}
+                        <span className="text-gray-600">{point.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </motion.div>
+            ))}
         </div>
         <div className="mt-4 bg-white py-12 px-6 rounded-xl shadow-lg text-center">
           <div className="max-w-3xl mx-auto">
             <h3 className="text-3xl lg:text-4xl font-bold text-[#2E4168] mb-4 leading-tight">
-              Join the GudMed Revolution
+              {data.footer?.title || "Join the GudMed Revolution"}
             </h3>
             <p className="text-lg font-medium text-gray-700 mb-6">
-              Partner with GudMed and embrace a smarter, more efficient future for healthcare. Contact us today to learn how we can transform your healthcare operations.
+              {data.footer?.description ||
+                "Partner with GudMed and embrace a smarter, more efficient future for healthcare. Contact us today to learn how we can transform your healthcare operations."}
             </p>
             <div className="mt-6">
               <a
-                href="/contacts"
+                href={data.footer?.ctaLink || "/contacts"}
                 className="bg-[#2E4168] text-white font-semibold py-4 px-6 rounded-lg shadow-md hover:bg-[#1A3051] hover:shadow-lg transition-all duration-300"
               >
-                Contact Us Today
+                {data.footer?.ctaText || "Contact Us Today"}
               </a>
             </div>
           </div>

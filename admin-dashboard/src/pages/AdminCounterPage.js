@@ -1,11 +1,9 @@
-
-
 // src/components/AdminCounterPage.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
-
-const socket = io("http://localhost:5000");
+import { Toaster, toast } from "react-hot-toast";
+import config from "../config/config"; // Import the config file
 
 const AdminCounterPage = () => {
   const [counter, setCounter] = useState({
@@ -14,44 +12,79 @@ const AdminCounterPage = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const token = localStorage.getItem("token");
 
-  const fetchCounter = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/counter");
-      setCounter({
-        title: response.data.title || "Our Impact",
-        items: response.data.items || [],
-      });
-      setLoading(false);
-    } catch (err) {
-      setError(err.message || "Failed to fetch counter data");
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const socket = io(config.socketBaseUrl, { // Use socketBaseUrl from config
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchCounter = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/counter`); // Use apiBaseUrl from config
+        setCounter({
+          title: response.data.title || "Our Impact",
+          items: response.data.items || [],
+        });
+        setLoading(false);
+      } catch (err) {
+        setError(err.message || "Failed to fetch counter data");
+        setLoading(false);
+      }
+    };
+
     fetchCounter();
-    socket.on("counterUpdated", fetchCounter);
-    return () => socket.off("counterUpdated");
+
+    socket.on("connect", () => {
+      console.log("Admin Socket.IO connected:", socket.id);
+    });
+
+    socket.on("counter_updated", (updatedData) => { // Changed to counter_updated
+      console.log("Admin received counter_updated:", updatedData);
+      setCounter(updatedData);
+      toast.success("Counter updated in real-time!");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Admin Socket.IO connection error:", err.message);
+      setError("Failed to connect to real-time updates: " + err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("counter_updated"); // Changed to counter_updated
+      socket.off("connect_error");
+      socket.disconnect();
+    };
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in first.");
       return;
     }
+    setIsSaving(true);
     try {
-      await axios.put(
-        "http://localhost:5000/api/counter",
-        counter,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      await fetchCounter();
+      await axios.put(`${config.apiBaseUrl}/api/counter`, counter, { // Use apiBaseUrl from config
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Changes saved successfully!");
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Error updating counter data");
+      toast.error(err.response?.data?.message || "Failed to save changes.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -60,6 +93,7 @@ const AdminCounterPage = () => {
       ...prev,
       items: [...prev.items, { label: "", number: 0, icon: "" }],
     }));
+    toast.success("New counter item added!");
   };
 
   const handleItemChange = (index, field, value) => {
@@ -77,6 +111,7 @@ const AdminCounterPage = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
+    toast.success("Counter item deleted!");
   };
 
   const moveItemUp = (index) => {
@@ -105,6 +140,7 @@ const AdminCounterPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Manage Counter Section</h1>
         {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
@@ -151,7 +187,6 @@ const AdminCounterPage = () => {
                   onChange={(e) => handleItemChange(index, "icon", e.target.value)}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Icon URL (e.g., https://example.com/icon.png)"
-                  required
                 />
                 <div className="flex space-x-3 mt-4">
                   <button
@@ -192,9 +227,11 @@ const AdminCounterPage = () => {
           <div className="text-center">
             <button
               type="submit"
-              className="w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-lg font-semibold"
+              disabled={isSaving}
+              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
+                }`}
             >
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

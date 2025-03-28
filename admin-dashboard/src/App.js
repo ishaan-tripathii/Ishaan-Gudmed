@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext.js';
+import { AuthProvider } from './contexts/AuthContext.js';
 import Login from './pages/Login.js';
 import AdminHome from './pages/AdminHome.js';
 import HomePageManager from './pages/HomePageManager.js';

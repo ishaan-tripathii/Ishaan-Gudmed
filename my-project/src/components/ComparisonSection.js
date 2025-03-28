@@ -1,7 +1,6 @@
-// src/components/ComparisonSection.jsx
 import React, { useState, useEffect } from "react";
-import { socket } from "../socket";
-import api from "../utils/api";
+import axios from "axios";
+import io from "socket.io-client";
 import {
   DocumentDuplicateIcon,
   DocumentTextIcon,
@@ -13,44 +12,81 @@ import {
   ShieldCheckIcon,
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
-
+import config from "../config/config";
 const iconMap = {
-  DocumentDuplicateIcon: DocumentDuplicateIcon,
-  DocumentTextIcon: DocumentTextIcon,
-  MagnifyingGlassCircleIcon: MagnifyingGlassCircleIcon,
-  ChartBarIcon: ChartBarIcon,
-  LinkIcon: LinkIcon,
-  ClipboardDocumentCheckIcon: ClipboardDocumentCheckIcon,
-  BellAlertIcon: BellAlertIcon,
-  ShieldCheckIcon: ShieldCheckIcon,
-  LockClosedIcon: LockClosedIcon,
+  DocumentDuplicateIcon,
+  DocumentTextIcon,
+  MagnifyingGlassCircleIcon,
+  ChartBarIcon,
+  LinkIcon,
+  ClipboardDocumentCheckIcon,
+  BellAlertIcon,
+  ShieldCheckIcon,
+  LockClosedIcon,
 };
 
 const ComparisonSection = () => {
-  const [comparison, setComparison] = useState({
-    title: "GudMed vs Other Technologies",
-    items: [],
-  });
+  const [data, setData] = useState({ title: "GudMed vs Other Technologies", items: [] });
   const [loading, setLoading] = useState(true);
 
-  const fetchComparison = async () => {
-    try {
-      const response = await api.get("/api/comparison");
-      setComparison({
-        title: response.data.title || "GudMed vs Other Technologies",
-        items: response.data.items || [],
-      });
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching comparison data:", err);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchComparison();
-    socket.on("comparisonUpdated", fetchComparison);
-    return () => socket.off("comparisonUpdated");
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/comparison`);
+        setData({
+          title: response.data.title || "GudMed vs Other Technologies",
+          items: response.data.items || [],
+        });
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching comparison data:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    socket.on("connect", () => {
+      console.log("ComparisonSection (Hook) Socket.IO connected:", socket.id);
+    });
+
+    socket.on("comparison_created", (newData) => {
+      console.log("Received comparison_created:", newData);
+      setData({
+        title: newData.title || "GudMed vs Other Technologies",
+        items: newData.items || [],
+      });
+    });
+
+    socket.on("comparison_updated", (updatedData) => {
+      console.log("Received comparison_updated:", updatedData);
+      setData({
+        title: updatedData.title || "GudMed vs Other Technologies",
+        items: updatedData.items || [],
+      });
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("ComparisonSection (Hook) Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("comparison_created");
+      socket.off("comparison_updated");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
   }, []);
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -58,9 +94,13 @@ const ComparisonSection = () => {
   return (
     <section className="bg-white py-0 sm:px-6 lg:px-8 px-1">
       <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#2E4168] leading-snug sm:leading-normal mt-6 mb-8 space-x-4">
-        {comparison.title.split("vs").map((part, index) => (
-          <span key={index} className={`text-3xl sm:text-4xl lg:text-4xl ${index === 0 ? "font-bold ml-2" : index === 1 ? "ml-4" : ""} text-[#2E4168]`}>
-            {part}{index === 0 ? "vs" : ""}
+        {data.title.split("vs").map((part, index) => (
+          <span
+            key={index}
+            className={`text-3xl sm:text-4xl lg:text-4xl ${index === 0 ? "font-bold ml-2" : index === 1 ? "ml-4" : ""} text-[#2E4168]`}
+          >
+            {part}
+            {index === 0 ? "vs" : ""}
           </span>
         ))}
       </h1>
@@ -76,7 +116,7 @@ const ComparisonSection = () => {
               </tr>
             </thead>
             <tbody>
-              {comparison.items.map((item, index) => {
+              {data.items.map((item, index) => {
                 const OtherIcon = iconMap[item.other.icon] || DocumentDuplicateIcon;
                 const GudmedIcon = iconMap[item.gudmed.icon] || DocumentTextIcon;
                 return (
@@ -84,9 +124,7 @@ const ComparisonSection = () => {
                     key={index}
                     className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-blue-50 transition-transform duration-300`}
                   >
-                    <td className="border border-gray-300 px-2 sm:px-4 py-2 sm:py-4 text-blue-900 font-bold">
-                      {item.aspect}
-                    </td>
+                    <td className="border border-gray-300 px-2 sm:px-4 py-2 sm:py-4 text-blue-900 font-bold">{item.aspect}</td>
                     <td className="border border-gray-300 px-2 sm:px-4 py-2 sm:py-4 text-gray-600">
                       <OtherIcon className="h-6 w-6 text-red-500 inline-block mr-2" />
                       {item.other.text}

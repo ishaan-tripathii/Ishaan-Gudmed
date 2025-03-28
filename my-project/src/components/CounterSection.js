@@ -1,32 +1,34 @@
+// src/components/CounterSection.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { socket } from "../socket";
-import api, { getImageUrl } from "../utils/api";
+import axios from "axios";
+import io from "socket.io-client";
 import CountUp from "react-countup";
 import BreadImage from "../img/bread-bg.jpg";
 import { Toaster, toast } from "react-hot-toast";
+import config from "../config/config";
 
 const CounterSection = () => {
   const [counters, setCounters] = useState([
     {
       title: "Prescriptions",
       count: 0,
-      icon: getImageUrl("/images/prescription.png"),
+      icon: "http://localhost:5000/images/prescription.png",
     },
     {
       title: "Files",
       count: 0,
-      icon: getImageUrl("/images/fa-file-prescription.jpg"),
+      icon: "http://localhost:5000/images/fa-file-prescription.jpg",
     },
     {
       title: "Doctors",
       count: 0,
-      icon: getImageUrl("/images/doctor-image.jpg"),
+      icon: "http://localhost:5000/images/doctor-image.jpg",
     },
     {
       title: "Patients",
       count: 0,
-      icon: getImageUrl("/images/patient-image.jpg"),
+      icon: "http://localhost:5000/images/patient-image.jpg",
     },
   ]);
   const [isVisible, setIsVisible] = useState(false);
@@ -34,17 +36,26 @@ const CounterSection = () => {
   const sectionRef = useRef(null);
 
   useEffect(() => {
+    const socket = io("http://localhost:5000", {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
     const fetchData = async () => {
       try {
-        const response = await api.get("/api/counter");
-        // Transform the data structure to match our frontend expectations
+        const response = await axios.get(`${config.apiBaseUrl}/api/counter`);
         const transformedCounters = response.data.items.map(item => ({
           title: item.label,
           count: item.number,
-          icon: item.icon || getImageUrl("/images/default-icon.png")
+          icon: item.icon || "http://localhost:5000/images/default-icon.png",
         }));
         setCounters(transformedCounters);
-        setIsVisible(false); // Reset visibility to re-trigger animation on update
         setLoading(false);
       } catch (error) {
         console.error("Error fetching counter data:", error);
@@ -54,34 +65,37 @@ const CounterSection = () => {
 
     fetchData();
 
-    socket.on("counterUpdate", (data) => {
-      // Transform the data structure to match our frontend expectations
+    socket.on("connect", () => {
+      // Removed console.log for production
+    });
+
+    socket.on("counter_updated", (data) => {
+      // Removed console.log for production
       const transformedCounters = data.items.map(item => ({
         title: item.label,
         count: item.number,
-        icon: item.icon || getImageUrl("/images/default-icon.png")
+        icon: item.icon || "http://localhost:5000/images/default-icon.png",
       }));
       setCounters(transformedCounters);
+      setIsVisible(false);
+      setTimeout(() => setIsVisible(true), 100);
       toast.success("Counter updated in real-time!");
     });
 
-    return () => {
-      socket.off("counterUpdate");
-    };
-  }, []);
+    socket.on("connect_error", (err) => {
+      // Removed console.log for production
+    });
 
-  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        console.log("Intersection:", entry.isIntersecting); // Debug visibility
         if (entry.isIntersecting) {
           setIsVisible(true);
         } else {
-          setIsVisible(false); // Reset when out of view to allow re-trigger
+          setIsVisible(false);
         }
       },
-      { threshold: 0.1, rootMargin: "0px" } // Trigger when 10% is visible
+      { threshold: 0.1, rootMargin: "0px" }
     );
 
     const currentRef = sectionRef.current;
@@ -90,6 +104,10 @@ const CounterSection = () => {
     }
 
     return () => {
+      socket.off("connect");
+      socket.off("counter_updated"); // Changed to counter_updated
+      socket.off("connect_error");
+      socket.disconnect();
       if (currentRef) {
         observer.unobserve(currentRef);
       }
@@ -97,8 +115,8 @@ const CounterSection = () => {
   }, []);
 
   const handleMouseEnter = () => {
-    setIsVisible(false); // Reset to trigger animation
-    setTimeout(() => setIsVisible(true), 100); // Small delay to restart animation
+    setIsVisible(false);
+    setTimeout(() => setIsVisible(true), 100);
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -106,11 +124,10 @@ const CounterSection = () => {
   return (
     <div
       ref={sectionRef}
-      className="relative py-12 md:py-16 lg:py-24 min-h-[400px]" // Ensure enough height
-      onMouseEnter={handleMouseEnter} // Trigger animation on hover
+      className="relative py-12 md:py-16 lg:py-24 min-h-[400px]"
+      onMouseEnter={handleMouseEnter}
     >
       <Toaster position="top-right" reverseOrder={false} />
-      {/* Background Image Layer */}
       <div
         className="absolute inset-0"
         style={{
@@ -120,9 +137,7 @@ const CounterSection = () => {
           backgroundRepeat: "no-repeat",
         }}
       ></div>
-      {/* Background Color Layer */}
       <div className="absolute inset-0 bg-[#2E4168] opacity-80"></div>
-      {/* Content Layer */}
       <div className="relative z-10 container mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8 text-center text-white">
         {counters.map((stat, index) => (
           <div key={index} className="group">
@@ -139,7 +154,7 @@ const CounterSection = () => {
                   duration={5}
                   separator=","
                   redraw={true}
-                  key={`${stat.count}-${isVisible}`} // Unique key to force re-render
+                  key={`${stat.count}-${isVisible}`}
                 />
               ) : (
                 "0"

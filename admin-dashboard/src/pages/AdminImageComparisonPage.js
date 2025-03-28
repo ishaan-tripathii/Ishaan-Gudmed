@@ -2,11 +2,21 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
 import { Toaster, toast } from "react-hot-toast";
+import config from "../config/config"; // Import the configuration file
 
-const socket = io("http://localhost:5000");
+const socket = io(config.socketBaseUrl, {
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000,
+  autoConnect: true,
+  transports: ["websocket"], // Simplify to WebSocket only
+  withCredentials: true,
+  forceNew: true,
+});
 
 const AdminImageComparisonPage = () => {
-  const [imageComparison, setImageComparison] = useState({
+  const defaultData = {
     heading: "Sample Prescription",
     description: "Move the slider left and right to see the magic!",
     sections: [
@@ -21,7 +31,8 @@ const AdminImageComparisonPage = () => {
         afterImage: "http://localhost:5000/images/compare-image-hindi.png",
       },
     ],
-  });
+  };
+  const [imageComparison, setImageComparison] = useState(defaultData);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,14 +40,16 @@ const AdminImageComparisonPage = () => {
 
   const fetchImageComparison = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/image-comparison");
+      const response = await axios.get(`${config.apiBaseUrl}/api/image-comparison`);
+      console.log("Fetched initial data:", response.data);
       setImageComparison({
-        heading: response.data.heading || "Sample Prescription",
-        description: response.data.description || "Move the slider left and right to see the magic!",
-        sections: response.data.sections || imageComparison.sections,
+        heading: response.data.heading || defaultData.heading,
+        description: response.data.description || defaultData.description,
+        sections: response.data.sections || defaultData.sections,
       });
       setLoading(false);
     } catch (err) {
+      console.error("Fetch error:", err);
       setError(err.message || "Failed to fetch image comparison data");
       setLoading(false);
     }
@@ -44,12 +57,40 @@ const AdminImageComparisonPage = () => {
 
   useEffect(() => {
     fetchImageComparison();
-    socket.on("imageComparisonUpdated", () => {
-      fetchImageComparison();
+
+    socket.on("connect", () => console.log("Socket.IO connected (admin):", socket.id));
+
+    socket.on("imageComparison_created", (newData) => {
+      console.log("Received imageComparison_created:", newData);
+      setImageComparison(newData);
+      toast.success("Image comparison created in real-time!");
+    });
+
+    socket.on("imageComparison_updated", (updatedData) => {
+      console.log("Received imageComparison_updated:", updatedData);
+      setImageComparison({ ...updatedData, sections: [...updatedData.sections] });
+      console.log("State set to:", updatedData);
       toast.success("Image comparison updated in real-time!");
     });
-    return () => socket.off("imageComparisonUpdated");
+
+    socket.on("connect_error", (err) => console.error("Socket.IO connection error:", err.message));
+
+    socket.on("any", (event, ...args) => console.log("Received event:", event, args));
+
+    return () => {
+      console.log("Cleaning up socket listeners");
+      socket.off("connect");
+      socket.off("imageComparison_created");
+      socket.off("imageComparison_updated");
+      socket.off("connect_error");
+      socket.off("any");
+      socket.disconnect();
+    };
   }, []);
+
+  useEffect(() => {
+    console.log("Current imageComparison state:", imageComparison);
+  }, [imageComparison]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,13 +101,15 @@ const AdminImageComparisonPage = () => {
     }
     setIsSaving(true);
     try {
-      await axios.put("http://localhost:5000/api/image-comparison", imageComparison, {
+      console.log("Sending update with data:", imageComparison);
+      const response = await axios.put(`${config.apiBaseUrl}/api/image-comparison`, imageComparison, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log("Update response:", response.data);
       toast.success("Changes saved successfully!");
-      await fetchImageComparison();
       setError("");
     } catch (err) {
+      console.error("Update error:", err.response || err);
       setError(err.response?.data?.message || "Error updating image comparison data");
       toast.error(err.response?.data?.message || "Failed to save changes.");
     } finally {
@@ -145,7 +188,7 @@ const AdminImageComparisonPage = () => {
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Image Sections</h2>
             {imageComparison.sections.map((section, index) => (
-              <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+              <div key={section._id || index} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
                 <input
                   type="text"
                   value={section.title}
@@ -192,9 +235,8 @@ const AdminImageComparisonPage = () => {
             <button
               type="submit"
               disabled={isSaving}
-              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${
-                isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
-              }`}
+              className={`w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg text-lg font-semibold transition-all duration-300 ${isSaving ? "animate-pulse opacity-75 cursor-not-allowed" : "hover:bg-green-700"
+                }`}
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </button>

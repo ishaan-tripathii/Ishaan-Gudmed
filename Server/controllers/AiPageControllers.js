@@ -38,7 +38,7 @@ export const createAIPage = async (req, res) => {
   try {
     const page = await AIPage.create(req.body);
     console.log("Created AI Page:", page);
-    notifyClients("aiPageUpdated", page); // Emit the raw page object
+    notifyClients("ai", "created", page); // Fixed signature
     return res.status(201).json({ success: true, message: "AI Page created successfully", data: page });
   } catch (error) {
     console.error("Error creating AI Page:", error);
@@ -63,7 +63,7 @@ export const updateAIPage = async (req, res) => {
       return res.status(404).json({ success: false, message: "Page not found" });
     }
     console.log("Updated AI Page:", updatedPage);
-    notifyClients("aiPageUpdated", updatedPage); // Emit the raw page object
+    notifyClients("ai", "updated", updatedPage); // Fixed signature
     res.status(200).json({ success: true, message: "AI Page updated successfully", data: updatedPage });
   } catch (error) {
     console.error("Error updating AI Page:", error);
@@ -84,7 +84,7 @@ export const deleteAIPage = async (req, res) => {
       return res.status(404).json({ success: false, message: "Page not found" });
     }
     console.log(`Deleted AI Page with ID: ${id}`);
-    notifyClients("aiPageUpdated", { _id: id, deleted: true });
+    notifyClients("ai", "deleted", { id: deletedPage._id }); // Fixed signature
     res.status(200).json({ success: true, message: "AI Page deleted successfully" });
   } catch (error) {
     console.error("Error deleting AI Page:", error);

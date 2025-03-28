@@ -1,365 +1,253 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import io from "socket.io-client";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import config from "../config/config"; // Import the configuration file
 
-const socket = io("http://localhost:5000");
-
-const AdminKnowledgePartnerPage = () => {
-  const [settings, setSettings] = useState({
+const AdminKnowledgePartner = () => {
+  const [data, setData] = useState({
     partners: [],
     accreditations: [],
-    twoFactorsImage: "https://example.com/default-two-factors.png",
-    titles: {
-      weAre: "We Are !",
-      accredited: "Accredited",
-      knowledgePartners: "Our Knowledge Partners",
-    },
+    twoFactorsImage: "",
+    titles: { weAre: "We Are !", accredited: "Accredited", knowledgePartners: "Our Knowledge Partners" },
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem("token");
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch("http://localhost:5000/api/knowledge-partners");
-      if (!response.ok) throw new Error("Failed to fetch settings");
-      const data = await response.json();
-      setSettings({
-        ...data,
-        titles: {
-          weAre: data.titles?.weAre || "We Are !",
-          accredited: data.titles?.accredited || "Accredited",
-          knowledgePartners: data.titles?.knowledgePartners || "Our Knowledge Partners",
-        },
-        twoFactorsImage: data.twoFactorsImage || "https://example.com/default-two-factors.png",
-      });
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      toast.error(err.message || "Failed to fetch settings");
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchSettings();
-    socket.on("knowledgePartnersUpdated", (updatedData) => {
-      setSettings({
-        ...updatedData,
-        titles: {
-          weAre: updatedData.titles?.weAre || "We Are !",
-          accredited: updatedData.titles?.accredited || "Accredited",
-          knowledgePartners: updatedData.titles?.knowledgePartners || "Our Knowledge Partners",
-        },
-        twoFactorsImage: updatedData.twoFactorsImage || "https://example.com/default-two-factors.png",
-      });
-      toast.success("Settings updated in real-time!");
+    const socket = io(config.socketBaseUrl, {
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
     });
-    return () => socket.off("knowledgePartnersUpdated");
-  }, []);
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/knowledge-partners`);
+        setData(response.data || data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching Knowledge Partners:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    socket.on("connect", () => {
+      console.log("AdminKnowledgePartner Socket.IO connected:", socket.id);
+    });
+
+    socket.on("knowledgePartners_created", (newData) => {
+      console.log("Received knowledgePartners_created:", newData);
+      setData(newData);
+      toast.success("Knowledge Partners created!");
+    });
+
+    socket.on("knowledgePartners_updated", (updatedData) => {
+      console.log("Received knowledgePartners_updated:", updatedData);
+      setData(updatedData);
+      toast.success("Knowledge Partners updated!");
+    });
+
+    socket.on("knowledgePartners_deleted", (deletedData) => {
+      console.log("Received knowledgePartners_deleted:", deletedData);
+      if (data._id === deletedData._id) {
+        setData({
+          partners: [],
+          accreditations: [],
+          twoFactorsImage: "",
+          titles: { weAre: "We Are !", accredited: "Accredited", knowledgePartners: "Our Knowledge Partners" },
+        });
+        toast.info("Knowledge Partners deleted!");
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("AdminKnowledgePartner Socket.IO connection error:", err.message);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("knowledgePartners_created");
+      socket.off("knowledgePartners_updated");
+      socket.off("knowledgePartners_deleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, [data._id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) {
-      setError("Please log in to perform this action.");
-      toast.error("Please log in to perform this action.");
-      return;
-    }
-    if (!settings.twoFactorsImage.trim()) {
-      setError("Two Factors Image URL is required.");
-      toast.error("Two Factors Image URL is required.");
-      return;
-    }
     try {
-      const fetchResponse = await fetch("http://localhost:5000/api/knowledge-partners");
-      if (!fetchResponse.ok) throw new Error("Failed to fetch existing data");
-      const currentData = await fetchResponse.json();
-      const id = currentData._id;
-
-      const response = await fetch(`http://localhost:5000/api/knowledge-partners/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(settings),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update settings");
+      if (data._id) {
+        await axios.put(`${config.apiBaseUrl}/api/knowledge-partners/${data._id}`, data, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+      } else {
+        await axios.post(`${config.apiBaseUrl}/api/knowledge-partners`, data, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
       }
-      toast.success("Settings updated successfully!");
-      setError("");
-    } catch (err) {
-      setError(err.message);
-      toast.error(err.message || "Error updating settings");
+      toast.success("Knowledge Partners saved successfully!");
+    } catch (error) {
+      console.error("Error saving Knowledge Partners:", error);
+      toast.error("Failed to save Knowledge Partners!");
     }
   };
 
-  const addItem = (type) => {
-    setSettings((prev) => ({
+  const handleDelete = async () => {
+    if (!data._id || !window.confirm("Are you sure you want to delete this data?")) return;
+    try {
+      await axios.delete(`${config.apiBaseUrl}/api/knowledge-partners/${data._id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("Knowledge Partners deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting Knowledge Partners:", error);
+      toast.error("Failed to delete Knowledge Partners!");
+    }
+  };
+
+  const addPartner = () => {
+    setData((prev) => ({
       ...prev,
-      [type]: [...prev[type], { title: "", image: "" }],
+      partners: [...prev.partners, { title: "", image: "" }],
     }));
   };
 
-  const handleItemChange = (type, index, field, value) => {
-    setSettings((prev) => ({
+  const updatePartner = (index, field, value) => {
+    setData((prev) => ({
       ...prev,
-      [type]: prev[type].map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      partners: prev.partners.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
     }));
   };
 
-  const handleDeleteItem = (type, index) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type.slice(0, -1)}?`)) return;
-    setSettings((prev) => ({
+  const addAccreditation = () => {
+    setData((prev) => ({
       ...prev,
-      [type]: prev[type].filter((_, i) => i !== index),
+      accreditations: [...prev.accreditations, { title: "", image: "" }],
     }));
   };
 
-  const moveItemUp = (type, index) => {
-    if (index === 0) return;
-    setSettings((prev) => {
-      const items = [...prev[type]];
-      [items[index - 1], items[index]] = [items[index], items[index - 1]];
-      return { ...prev, [type]: items };
-    });
-  };
-
-  const moveItemDown = (type, index) => {
-    if (index === settings[type].length - 1) return;
-    setSettings((prev) => {
-      const items = [...prev[type]];
-      [items[index], items[index + 1]] = [items[index + 1], items[index]];
-      return { ...prev, [type]: items };
-    });
-  };
-
-  const handleTwoFactorsChange = (value) => {
-    setSettings((prev) => ({ ...prev, twoFactorsImage: value }));
-  };
-
-  const handleTitleChange = (field, value) => {
-    setSettings((prev) => ({
+  const updateAccreditation = (index, field, value) => {
+    setData((prev) => ({
       ...prev,
-      titles: { ...prev.titles, [field]: value },
+      accreditations: prev.accreditations.map((a, i) => (i === index ? { ...a, [field]: value } : a)),
     }));
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Manage Knowledge Partners</h1>
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>
-        )}
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-6">Manage Knowledge Partners</h1>
+      <ToastContainer />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-lg font-semibold">Two Factors Image URL</label>
+          <input
+            type="text"
+            value={data.twoFactorsImage}
+            onChange={(e) => setData((prev) => ({ ...prev, twoFactorsImage: e.target.value }))}
+            className="w-full p-2 border rounded"
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Section Titles</h2>
-            <p className="text-gray-600 mb-4">Customize the titles for each section.</p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">"We Are" Title</label>
-                <input
-                  type="text"
-                  value={settings.titles.weAre}
-                  onChange={(e) => handleTitleChange("weAre", e.target.value)}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">"Accredited" Title</label>
-                <input
-                  type="text"
-                  value={settings.titles.accredited}
-                  onChange={(e) => handleTitleChange("accredited", e.target.value)}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">"Knowledge Partners" Title</label>
-                <input
-                  type="text"
-                  value={settings.titles.knowledgePartners}
-                  onChange={(e) => handleTitleChange("knowledgePartners", e.target.value)}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
+        <div>
+          <h2 className="text-xl font-semibold">Titles</h2>
+          <input
+            type="text"
+            value={data.titles.weAre}
+            onChange={(e) => setData((prev) => ({ ...prev, titles: { ...prev.titles, weAre: e.target.value } }))}
+            className="w-full p-2 border rounded mt-2"
+            placeholder="We Are Title"
+          />
+          <input
+            type="text"
+            value={data.titles.accredited}
+            onChange={(e) => setData((prev) => ({ ...prev, titles: { ...prev.titles, accredited: e.target.value } }))}
+            className="w-full p-2 border rounded mt-2"
+            placeholder="Accredited Title"
+          />
+          <input
+            type="text"
+            value={data.titles.knowledgePartners}
+            onChange={(e) =>
+              setData((prev) => ({ ...prev, titles: { ...prev.titles, knowledgePartners: e.target.value } }))
+            }
+            className="w-full p-2 border rounded mt-2"
+            placeholder="Knowledge Partners Title"
+          />
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold">Partners</h2>
+          {data.partners.map((partner, index) => (
+            <div key={index} className="flex space-x-2 mt-2">
+              <input
+                type="text"
+                value={partner.title}
+                onChange={(e) => updatePartner(index, "title", e.target.value)}
+                className="w-1/2 p-2 border rounded"
+                placeholder="Partner Title"
+              />
+              <input
+                type="text"
+                value={partner.image}
+                onChange={(e) => updatePartner(index, "image", e.target.value)}
+                className="w-1/2 p-2 border rounded"
+                placeholder="Image URL"
+              />
             </div>
-          </div>
+          ))}
+          <button type="button" onClick={addPartner} className="mt-2 bg-blue-500 text-white p-2 rounded">
+            Add Partner
+          </button>
+        </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Knowledge Partners</h2>
-            <p className="text-gray-600 mb-4">Add and arrange knowledge partner logos.</p>
-            {settings.partners.map((partner, index) => (
-              <div
-                key={index}
-                className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:space-x-4"
-              >
-                <div className="flex-1 space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Title (e.g., GOOGLE)"
-                    value={partner.title}
-                    onChange={(e) => handleItemChange("partners", index, "title", e.target.value)}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Image URL (e.g., http://example.com/google.png)"
-                    value={partner.image}
-                    onChange={(e) => handleItemChange("partners", index, "image", e.target.value)}
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div className="flex space-x-2 sm:space-x-3 mt-4 sm:mt-0">
-                  <button
-                    type="button"
-                    onClick={() => moveItemUp("partners", index)}
-                    disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${
-                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                    }`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveItemDown("partners", index)}
-                    disabled={index === settings.partners.length - 1}
-                    className={`p-2 rounded-lg text-white ${
-                      index === settings.partners.length - 1
-                        ? "bg-gray-300 cursor-not-allowed"
-                        : "bg-blue-500 hover:bg-blue-600"
-                    }`}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteItem("partners", index)}
-                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addItem("partners")}
-              className="w-full sm:w-auto mt-4 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              + Add Knowledge Partner
+        <div>
+          <h2 className="text-xl font-semibold">Accreditations</h2>
+          {data.accreditations.map((accreditation, index) => (
+            <div key={index} className="flex space-x-2 mt-2">
+              <input
+                type="text"
+                value={accreditation.title}
+                onChange={(e) => updateAccreditation(index, "title", e.target.value)}
+                className="w-1/2 p-2 border rounded"
+                placeholder="Accreditation Title"
+              />
+              <input
+                type="text"
+                value={accreditation.image}
+                onChange={(e) => updateAccreditation(index, "image", e.target.value)}
+                className="w-1/2 p-2 border rounded"
+                placeholder="Image URL"
+              />
+            </div>
+          ))}
+          <button type="button" onClick={addAccreditation} className="mt-2 bg-blue-500 text-white p-2 rounded">
+            Add Accreditation
+          </button>
+        </div>
+
+        <div className="flex gap-4">
+          <button type="submit" className="bg-green-500 text-white p-2 rounded">
+            {data._id ? "Update" : "Create"} Knowledge Partners
+          </button>
+          {data._id && (
+            <button type="button" onClick={handleDelete} className="bg-red-500 text-white p-2 rounded">
+              Delete
             </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Accreditations</h2>
-            <p className="text-gray-600 mb-4">Add and arrange accreditation logos.</p>
-            {settings.accreditations.map((accreditation, index) => (
-              <div
-                key={index}
-                className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:space-x-4"
-              >
-                <div className="flex-1 space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Title (e.g., NABH)"
-                    value={accreditation.title}
-                    onChange={(e) =>
-                      handleItemChange("accreditations", index, "title", e.target.value)
-                    }
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Image URL (e.g., http://example.com/nbha.png)"
-                    value={accreditation.image}
-                    onChange={(e) =>
-                      handleItemChange("accreditations", index, "image", e.target.value)
-                    }
-                    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div className="flex space-x-2 sm:space-x-3 mt-4 sm:mt-0">
-                  <button
-                    type="button"
-                    onClick={() => moveItemUp("accreditations", index)}
-                    disabled={index === 0}
-                    className={`p-2 rounded-lg text-white ${
-                      index === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                    }`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveItemDown("accreditations", index)}
-                    disabled={index === settings.accreditations.length - 1}
-                    className={`p-2 rounded-lg text-white ${
-                      index === settings.accreditations.length - 1
-                        ? "bg-gray-300 cursor-not-allowed"
-                        : "bg-blue-500 hover:bg-blue-600"
-                    }`}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteItem("accreditations", index)}
-                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addItem("accreditations")}
-              className="w-full sm:w-auto mt-4 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              + Add Accreditation
-            </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Two Factors Image</h2>
-            <p className="text-gray-600 mb-4">Set the image for the 'We Are' section.</p>
-            <input
-              type="text"
-              placeholder="Image URL (e.g., http://example.com/two-factors.png)"
-              value={settings.twoFactorsImage}
-              onChange={(e) => handleTwoFactorsChange(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div className="text-center">
-            <button
-              type="submit"
-              className="w-full sm:w-auto p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-lg font-semibold"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </div>
+          )}
+        </div>
+      </form>
     </div>
   );
 };
 
-export default AdminKnowledgePartnerPage;
+export default AdminKnowledgePartner;
