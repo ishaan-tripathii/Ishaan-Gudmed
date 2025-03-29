@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import io from "socket.io-client";
 import OfferContentSection from "../Common/OfferContentSection";
+import config from "../../config"; // Import the config file
 
 const KnowledgePartnerCardSection = () => {
   const defaultData = {
@@ -14,7 +15,7 @@ const KnowledgePartnerCardSection = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const socket = io("http://localhost:5000", {
+    const socket = io(config.socketBaseUrl, {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -26,7 +27,7 @@ const KnowledgePartnerCardSection = () => {
 
     const fetchData = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/knowledge-partners"); // Adjust endpoint
+        const response = await axios.get(`${config.apiBaseUrl}/api/knowledge-partners`); // Use config for API base URL
         setData(response.data || defaultData);
         setLoading(false);
       } catch (error) {
