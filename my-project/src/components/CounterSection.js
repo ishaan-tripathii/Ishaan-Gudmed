@@ -1,3 +1,5 @@
+
+
 // src/components/CounterSection.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -13,22 +15,22 @@ const CounterSection = () => {
     {
       title: "Prescriptions",
       count: 0,
-      icon: "http://localhost:5000/images/prescription.png",
+      icon: `${config.apiBaseUrl}/images/prescription.png`,
     },
     {
       title: "Files",
       count: 0,
-      icon: "http://localhost:5000/images/fa-file-prescription.jpg",
+      icon: `${config.apiBaseUrl}/images/fa-file-prescription.jpg`,
     },
     {
       title: "Doctors",
       count: 0,
-      icon: "http://localhost:5000/images/doctor-image.jpg",
+      icon: `${config.apiBaseUrl}/images/doctor-image.jpg`,
     },
     {
       title: "Patients",
       count: 0,
-      icon: "http://localhost:5000/images/patient-image.jpg",
+      icon: `${config.apiBaseUrl}/images/patient-image.jpg`,
     },
   ]);
   const [isVisible, setIsVisible] = useState(false);
@@ -36,7 +38,7 @@ const CounterSection = () => {
   const sectionRef = useRef(null);
 
   useEffect(() => {
-    const socket = io("http://localhost:5000", {
+    const socket = io(config.socketBaseUrl, {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -53,7 +55,7 @@ const CounterSection = () => {
         const transformedCounters = response.data.items.map(item => ({
           title: item.label,
           count: item.number,
-          icon: item.icon || "http://localhost:5000/images/default-icon.png",
+          icon: item.icon || `${config.apiBaseUrl}/images/default-icon.png`,
         }));
         setCounters(transformedCounters);
         setLoading(false);
@@ -65,16 +67,11 @@ const CounterSection = () => {
 
     fetchData();
 
-    socket.on("connect", () => {
-      // Removed console.log for production
-    });
-
     socket.on("counter_updated", (data) => {
-      // Removed console.log for production
       const transformedCounters = data.items.map(item => ({
         title: item.label,
         count: item.number,
-        icon: item.icon || "http://localhost:5000/images/default-icon.png",
+        icon: item.icon || `${config.apiBaseUrl}/images/default-icon.png`,
       }));
       setCounters(transformedCounters);
       setIsVisible(false);
@@ -82,18 +79,10 @@ const CounterSection = () => {
       toast.success("Counter updated in real-time!");
     });
 
-    socket.on("connect_error", (err) => {
-      // Removed console.log for production
-    });
-
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        } else {
-          setIsVisible(false);
-        }
+        setIsVisible(entry.isIntersecting);
       },
       { threshold: 0.1, rootMargin: "0px" }
     );
@@ -104,9 +93,6 @@ const CounterSection = () => {
     }
 
     return () => {
-      socket.off("connect");
-      socket.off("counter_updated"); // Changed to counter_updated
-      socket.off("connect_error");
       socket.disconnect();
       if (currentRef) {
         observer.unobserve(currentRef);
@@ -114,18 +100,12 @@ const CounterSection = () => {
     };
   }, []);
 
-  const handleMouseEnter = () => {
-    setIsVisible(false);
-    setTimeout(() => setIsVisible(true), 100);
-  };
-
   if (loading) return <div className="text-center py-10">Loading...</div>;
 
   return (
     <div
       ref={sectionRef}
       className="relative py-12 md:py-16 lg:py-24 min-h-[400px]"
-      onMouseEnter={handleMouseEnter}
     >
       <Toaster position="top-right" reverseOrder={false} />
       <div
@@ -142,20 +122,11 @@ const CounterSection = () => {
         {counters.map((stat, index) => (
           <div key={index} className="group">
             <div className="w-20 h-20 md:w-24 md:h-24 mx-auto flex items-center justify-center rounded-full bg-[#2E4168] group-hover:bg-white border-2 border-transparent border-white group-hover:border-customBlue transition-all duration-300">
-              <div className="text-white group-hover:text-[#2E4168] group-hover:bg-transparent hover:text-white">
-                <img src={stat.icon} alt={`${stat.title} Icon`} className="w-10 h-10" />
-              </div>
+              <img src={stat.icon} alt={`${stat.title} Icon`} className="w-10 h-10" />
             </div>
             <div className="text-4xl md:text-5xl font-bold mt-4">
               {isVisible ? (
-                <CountUp
-                  start={0}
-                  end={stat.count}
-                  duration={5}
-                  separator=","
-                  redraw={true}
-                  key={`${stat.count}-${isVisible}`}
-                />
+                <CountUp start={0} end={stat.count} duration={5} separator="," />
               ) : (
                 "0"
               )}
