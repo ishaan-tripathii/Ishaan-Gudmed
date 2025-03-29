@@ -6,7 +6,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import config from "../config/config"; // Updated import path
 
-const socket = io(config.SOCKET_URL, { reconnection: true });
+const socket = io(config.socketBaseUrl, { reconnection: true });
 
 const ClientLogo = ({ src, alt }) => (
   <div className="flex justify-center items-center mx-auto w-32 h-32 lg:w-40 lg:h-40">
@@ -26,7 +26,7 @@ const OurClient = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get(`${config.API_URL}/api/clients`);
+      const response = await axios.get(`${config.apiBaseUrl}/api/clients`);
       setSettings(response.data);
       setLoading(false);
     } catch (err) {
