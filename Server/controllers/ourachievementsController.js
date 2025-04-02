@@ -4,7 +4,7 @@ import { notifyClients } from "../services/socket.js";
 // ✅ Fetch Our Achievements Data
 export const getOurAchievements = async (req, res) => {
     try {
-        const data = await OurAchievements.findById(req.params.id);
+        const data = await OurAchievements.find();
         if (!data) {
             return res.status(404).json({  
                 success: false,

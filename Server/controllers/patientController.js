@@ -5,10 +5,10 @@ import { notifyClients } from "../services/socket.js";
 // Create the Patient model
 const Patient = mongoose.model("Patient", patientSchema);
 
-// Get Patient data
+// ✅ Get Patient data (Updated)
 export const getPatient = async (req, res) => {
   try {
-    const patient = await Patient.findOne({});
+    const patient = await Patient.findById(req.params.id); // Fetch a specific patient
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
@@ -19,7 +19,7 @@ export const getPatient = async (req, res) => {
   }
 };
 
-// Create Patient data
+// ✅ Create Patient data
 export const createPatient = async (req, res) => {
   try {
     const { heading, subheading, image, button, content } = req.body;
@@ -33,7 +33,7 @@ export const createPatient = async (req, res) => {
   }
 };
 
-// Update Patient data
+// ✅ Update Patient data
 export const updatePatient = async (req, res) => {
   try {
     const { heading, subheading, image, button, content } = req.body;
@@ -53,7 +53,7 @@ export const updatePatient = async (req, res) => {
   }
 };
 
-// Delete Patient data
+// ✅ Delete Patient data
 export const deletePatient = async (req, res) => {
   try {
     const patient = await Patient.findByIdAndDelete(req.params.id);

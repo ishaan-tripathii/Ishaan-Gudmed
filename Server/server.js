@@ -24,6 +24,7 @@ import ThirdSection from "./routes/Aboutus/thirdsectionRoutes.js";
 import { forgotPassword } from "./controllers/authController.js";
 import gudmedSmartHospitalRoutes from "./routes/gudmedserviceRoutes.js";
 import smartCameraRoutes from "./routes/smartCameraRoutes.js";
+import patientRoutes from "./routes/patientRoutes.js";
 
 
 
@@ -118,6 +119,8 @@ app.use("/api/forgotPassword", forgotPassword);
 //app.use('/api/services', ourservicesRoutes);
 app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
 app.use("/api/smartCamera", smartCameraRoutes);
+app.use("/api/patients", patientRoutes);
+
 
 
 
