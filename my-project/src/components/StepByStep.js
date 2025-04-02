@@ -1,38 +1,39 @@
 import React, { useState, useEffect } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import { getStepByStep } from "./Service/apiService"; // Assuming this is correct
-import { connectSocket, onStepByStepUpdate, onStepByStepCreate, onStepByStepDelete, disconnectSocket } from "./Service/socketService"; // Corrected path
-// Removed: import socket from "./Service/socketService" (unused)
+import { getStepByStep } from "./Service/apiService"; // Assuming this fetches initial data
+import { connectSocket, onStepByStepUpdate, onStepByStepCreate, onStepByStepDelete, disconnectSocket } from "./Service/socketService";
+
 const StepByStep = () => {
   const [data, setData] = useState({ steps: [], heading: "", subheading: "", description: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize both API and Socket.IO in a single lifecycle
+    // Connect to Socket.IO server
     const socket = connectSocket();
 
-    // Fetch initial data via API
+    // Fetch initial data via HTTP API
     const fetchData = async () => {
       try {
         const initialData = await getStepByStep();
-        setData(initialData);
+        setData(initialData || { steps: [], heading: "", subheading: "", description: "" });
         setLoading(false);
       } catch (error) {
         toast.error("Failed to load initial data");
+        console.error("Error fetching initial data:", error);
         setLoading(false);
       }
     };
 
     fetchData();
 
-    // Set up Socket.IO event listeners for real-time updates
+    // Socket.IO event listeners for real-time updates
     onStepByStepUpdate((updatedData) => {
-      setData(updatedData);
+      setData(updatedData || { steps: [], heading: "", subheading: "", description: "" });
       toast.success("Step-by-step data updated!");
     });
 
     onStepByStepCreate((newData) => {
-      setData(newData);
+      setData(newData || { steps: [], heading: "", subheading: "", description: "" });
       toast.success("Step-by-step data created!");
     });
 
@@ -41,7 +42,7 @@ const StepByStep = () => {
       toast.success("Step-by-step data deleted!");
     });
 
-    // Cleanup Socket.IO connection on unmount
+    // Cleanup on unmount
     return () => {
       disconnectSocket();
     };

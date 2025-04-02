@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
             if (response.data.success) {
                 localStorage.setItem('token', response.data.token);
                 setUser(response.data.user);
-                navigate('/admin/home'); // Updated route
+                navigate('/admin'); // Updated route
             } else {
                 setError(response.data.message || 'Login failed');
             }

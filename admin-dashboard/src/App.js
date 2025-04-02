@@ -16,13 +16,15 @@ import WhyGudMedisUnique from './pages/WhyGudMedisUniquePage.js';
 import AdminKnowledgePartnerPage from './pages/AdminKnowledgePartnerPage.js';
 import OurClientManager from './pages/AdminClientPage.js';
 import AdminFooterPage from './pages/AdminFooterPage.js';
-
+import AboutUs from "./pages/AboutUs/AboutUsHome.js"
+import AboutUsContent from './pages/AboutUs/AboutUsContent.js';
+import AboutUsAcievment from './pages/AboutUs/AboutUsAcievment.js';
 const App = () => {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<AdminHome />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/admin" element={<AdminHome />} />
         <Route path="/admin/home" element={<HomePageManager />} />
         <Route path="/admin/home/slider" element={<SliderManager />} />
         <Route path="/admin/home/animated-text" element={<AnimatedTextManager />} />
@@ -36,6 +38,10 @@ const App = () => {
         <Route path="/admin/home/knowledge-partner-card-section" element={<AdminKnowledgePartnerPage />} />
         <Route path="/admin/home/our-client" element={<OurClientManager />} />
         <Route path="/admin/home/our-footer" element={<AdminFooterPage />} />
+        {/* About Us Routes */}
+        <Route path="/admin/about-us" element={<AboutUs />} />
+        <Route path="/admin/about-us/about-content" element={<AboutUsContent />} />
+        <Route path="/admin/about-us/achievements" element={<AboutUsAcievment />} />
       </Routes>
     </AuthProvider>
   );

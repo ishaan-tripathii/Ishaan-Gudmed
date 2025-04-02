@@ -19,6 +19,9 @@ import imageComparisonRoutes from "./routes/imageComparisonRoutes.js";
 import footerRoutes from "./routes/footerRoutes.js";
 import whyGudMedRoutes from "./routes/WhyGudMedisUniqueRoutes.js";
 import mongoose from "mongoose";
+import AboutUs from "./routes/Aboutus/aboutusRoute.js";
+import ourachievements from "./routes/Aboutus/ouracievmentsRoutes.js";
+import ThirdSection from "./routes/Aboutus/thirsectionRoutes.js";
 
 export const app = express();
 
@@ -91,6 +94,9 @@ app.use("/api/animated-text", animatedTextRoutes);
 app.use("/api/image-comparison", imageComparisonRoutes);
 app.use("/api/footer", footerRoutes);
 app.use("/api/why-gudmed", whyGudMedRoutes);
+app.use("/api/aboutus",AboutUs);
+app.use("/api/ourachievements", ourachievements);
+app.use("/api/thirdsection", ThirdSection);
 
 app.get("/", (req, res) => {
   res.json({
