@@ -4,7 +4,7 @@ import { notifyClients } from "../services/socket.js";
 // ✅ Fetch Our Achievements Data
 export const getOurAchievements = async (req, res) => {
     try {
-        const data = await OurAchievements.findOne();
+        const data = await OurAchievements.findById(req.params.id);
         if (!data) {
             return res.status(404).json({  
                 success: false,
@@ -47,16 +47,23 @@ export const createOurAchievements = async (req, res) => {
     }
 };
 
-// ✅ Update Our Achievements Data
+// ✅ Update Our Achievements Data (Now Uses `req.params.id`)
 export const updateOurAchievements = async (req, res) => {
     try {
         const { title, description, cards } = req.body;
 
-        const updatedData = await OurAchievements.findOneAndUpdate(
-            {}, 
+        const updatedData = await OurAchievements.findByIdAndUpdate(
+            req.params.id, 
             { title, description, cards }, 
-            { new: true, upsert: true }
+            { new: true }
         );
+
+        if (!updatedData) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Our Achievements data not found" 
+            });
+        }
 
         notifyClients("OurAchievementsUpdated", updatedData);
 
@@ -75,10 +82,10 @@ export const updateOurAchievements = async (req, res) => {
     }
 };
 
-// ✅ Delete Our Achievements Data
+// ✅ Delete Our Achievements Data (Now Uses `req.params.id`)
 export const deleteOurAchievements = async (req, res) => {
     try {
-        const deletedData = await OurAchievements.findOneAndDelete();
+        const deletedData = await OurAchievements.findByIdAndDelete(req.params.id);
         if (!deletedData) {
             return res.status(404).json({
                 success: false,
@@ -86,7 +93,7 @@ export const deleteOurAchievements = async (req, res) => {
             });
         }
 
-        notifyClients("OurAchievementsDeleted", null);
+        notifyClients?.("OurAchievementsDeleted", null);
 
         res.status(200).json({
             success: true,

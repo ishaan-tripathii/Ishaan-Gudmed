@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.get("/", getOurAchievements);
 router.post("/", authenticateToken, createOurAchievements);
-router.put("/", authenticateToken, updateOurAchievements);
-router.delete("/", authenticateToken, deleteOurAchievements);
+router.put("/:id", authenticateToken, updateOurAchievements);
+router.delete("/:id", authenticateToken, deleteOurAchievements);
 
 export default router;
