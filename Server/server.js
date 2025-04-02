@@ -23,7 +23,8 @@ import ourachievements from "./routes/Aboutus/ourachievementsRoutes.js";
 import ThirdSection from "./routes/Aboutus/thirdsectionRoutes.js";
 import { forgotPassword } from "./controllers/authController.js";
 import gudmedSmartHospitalRoutes from "./routes/gudmedserviceRoutes.js";
-import smartCameraRoutes from "./routes/smartCameraRoutes.js"
+import smartCameraRoutes from "./routes/smartCameraRoutes.js";
+
 
 
 import mongoose from "mongoose";
@@ -116,7 +117,7 @@ app.use("/api/thirdsection", ThirdSection);
 app.use("/api/forgotPassword", forgotPassword);
 //app.use('/api/services', ourservicesRoutes);
 app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
-app.use("/api/smartCamera", smartCameraRoutes)
+app.use("/api/smartCamera", smartCameraRoutes);
 
 
 

@@ -83,3 +83,5 @@ export const deleteSmartCamera = async (req, res) => {
 
 
 
+
+
