@@ -43,118 +43,187 @@
 
 // export default AboutUsContent;
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
-
-const socket = io("http://localhost:5000");
-const API_URL = "http://localhost:5000/api/aboutus";
+import io from "socket.io-client";
+import { toast, Toaster } from "react-hot-toast";
+import config from "../../config/config"; // Verify this path matches your project structure
 
 const AboutUsContent = () => {
-  const [formData, setFormData] = useState({ heading: "", subheading: "", description: "", imageUrl: "" });
+  const token = localStorage.getItem("token");
+  const [formData, setFormData] = useState({
+    heading: "",
+    subheading: "",
+    description: "",
+    imageUrl: "",
+  });
   const [aboutUs, setAboutUs] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch initial About Us data when the component is mounted
-  useEffect(() => {
-    fetchAboutUs();
-    socket.on("aboutUsUpdated", (data) => {
-      setAboutUs(data);
-      setFormData(data || { heading: "", subheading: "", description: "", imageUrl: "" });
-    });
-    return () => socket.off("aboutUsUpdated");
-  }, []);
-
-  // Fetch About Us data from the server
-  const fetchAboutUs = async () => {
+  // Fetch About Us data from the API, memoized with useCallback
+  const fetchAboutUs = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await axios.get(API_URL);
-      if (response.data.success) {
-        setAboutUs(response.data.data);
-        setFormData(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching About Us data:", error);
-    }
-  };
-
-  // Handle input field changes
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  // Handle Create operation
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem("token");
-
-    try {
-      const response = await axios.post(API_URL, formData, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.data.success) {
-        alert("Successfully created About Us content");
-        fetchAboutUs(); // Refresh data
-      } else {
-        alert("Failed to create About Us content: " + response.data.message);
-      }
-    } catch (error) {
-      console.error("Error creating About Us content:", error);
-    }
-  };
-
-  // Handle Update operation
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!aboutUs) return alert("No data to update");
-
-    const token = localStorage.getItem("token");
-
-    try {
-      const response = await axios.put(`${API_URL}/${aboutUs._id}`, formData, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.data.success) {
-        alert("Successfully updated About Us content");
-        fetchAboutUs(); // Refresh data
-      } else {
-        alert("Failed to update About Us content: " + response.data.message);
-      }
-    } catch (error) {
-      console.error("Error updating About Us content:", error);
-    }
-  };
-
-  // Handle Delete operation
-  const handleDelete = async () => {
-    if (!aboutUs) return alert("No data to delete");
-
-    const token = localStorage.getItem("token");
-
-    try {
-      const response = await axios.delete(`${API_URL}/${aboutUs._id}`, {
+      const response = await axios.get(`${config.apiBaseUrl}/api/aboutus`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.success) {
-        alert("Successfully deleted About Us content");
-        setAboutUs(null); // Clear data
-        setFormData({ heading: "", subheading: "", description: "", imageUrl: "" }); // Clear form
+        setAboutUs(response.data.data);
+        setFormData(response.data.data);
+      } else {
+        setAboutUs(null);
+        setFormData({ heading: "", subheading: "", description: "", imageUrl: "" });
       }
     } catch (error) {
-      console.error("Error deleting About Us content:", error);
+      if (error.response && error.response.status === 404) {
+        setAboutUs(null);
+        setFormData({ heading: "", subheading: "", description: "", imageUrl: "" });
+      } else {
+        toast.error("Failed to fetch About Us data");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]); // Dependency: token
+
+  // Initialize Socket.IO and fetch data on mount or token change
+  useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    socket.on("connect", () => {
+      // Optional: console.log("Socket connected");
+    });
+
+    socket.on("aboutUsCreated", (data) => {
+      setAboutUs(data);
+      setFormData(data);
+      toast.success("About Us content created in real-time!");
+    });
+
+    socket.on("aboutUsUpdated", (data) => {
+      setAboutUs(data);
+      setFormData(data);
+      toast.success("About Us content updated in real-time!");
+    });
+
+    socket.on("aboutUsDeleted", () => {
+      setAboutUs(null);
+      setFormData({ heading: "", subheading: "", description: "", imageUrl: "" });
+      toast.success("About Us content deleted in real-time!");
+    });
+
+    socket.on("connect_error", (error) => {
+      // Optional: console.error("Socket connection error:", error);
+    });
+
+    fetchAboutUs();
+
+    // Cleanup socket listeners on unmount
+    return () => {
+      socket.off("connect");
+      socket.off("aboutUsCreated");
+      socket.off("aboutUsUpdated");
+      socket.off("aboutUsDeleted");
+      socket.off("connect_error");
+      socket.disconnect();
+    };
+  }, [token, fetchAboutUs]); // Dependencies: token, fetchAboutUs
+
+  // Handle form input changes
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // Handle creating new About Us content
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (aboutUs) {
+      toast.error("About Us content already exists. Use update instead.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await axios.post(`${config.apiBaseUrl}/api/aboutus`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        toast.success("Successfully created About Us content");
+        fetchAboutUs();
+      } else {
+        toast.error("Failed to create About Us content: " + response.data.message);
+      }
+    } catch (error) {
+      toast.error("Error creating About Us content: " + error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Handle updating existing About Us content
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!aboutUs) {
+      toast.error("No About Us content to update. Create first.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await axios.put(`${config.apiBaseUrl}/api/aboutus/${aboutUs._id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        toast.success("Successfully updated About Us content");
+        fetchAboutUs();
+      } else {
+        toast.error("Failed to update About Us content: " + response.data.message);
+      }
+    } catch (error) {
+      toast.error("Error updating About Us content: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle deleting About Us content
+  const handleDelete = async () => {
+    if (!aboutUs) {
+      toast.error("No About Us content to delete.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete the About Us content?")) return;
+    setIsLoading(true);
+    try {
+      const response = await axios.delete(`${config.apiBaseUrl}/api/aboutus/${aboutUs._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        toast.success("Successfully deleted About Us content");
+        fetchAboutUs();
+      } else {
+        toast.error("Failed to delete About Us content: " + response.data.message);
+      }
+    } catch (error) {
+      toast.error("Error deleting About Us content: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Render the component
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       <h1 className="text-3xl font-bold mb-4">Manage About Us</h1>
-      <form
-        onSubmit={aboutUs ? handleUpdate : handleCreate} // Call the correct handler based on whether we're editing or creating
-        className="bg-white p-6 shadow-md rounded-lg"
-      >
+      <form onSubmit={aboutUs ? handleUpdate : handleCreate} className="bg-white p-6 shadow-md rounded-lg">
         {["heading", "subheading", "description", "imageUrl"].map((field) => (
           <div key={field} className="mb-4">
             <label className="block font-medium capitalize">{field}:</label>
@@ -181,15 +250,21 @@ const AboutUsContent = () => {
         <div className="flex gap-4">
           <button
             type="submit"
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            disabled={isLoading}
+            className={`px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
-            {aboutUs ? "Update" : "Create"} About Us
+            {isLoading ? "Processing..." : aboutUs ? "Update" : "Create"} About Us
           </button>
           {aboutUs && (
             <button
               type="button"
               onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              disabled={isLoading}
+              className={`px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               Delete
             </button>

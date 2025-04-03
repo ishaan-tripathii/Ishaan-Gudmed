@@ -47,51 +47,8 @@ export default function Achievements() {
     });
 
     useEffect(() => {
-        const fetchAchievements = () => {
-            fetch('http://localhost:5000/api/ourachievements')
-                .then((response) => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.json();
-                })
-                .then((response) => {
-                    if (response.success && response.data) {
-                        const data = response.data;
-                        const formattedCards = (data.cards || [])
-                            .filter((achievement) => achievement.title && achievement.icon && achievement.description)
-                            .map((achievement) => {
-                                const IconComponent = iconMap[achievement.icon] || FaAward;
-                                return {
-                                    title: achievement.title,
-                                    icon: <IconComponent className="w-12 h-12" style={{ color: achievement.iconColor || '#2563eb' }} />,
-                                    content: [achievement.description],
-                                };
-                            });
-                        setAchievementsData({
-                            title: data.title || 'Our Achievements',
-                            description: data.description || 'No description available.',
-                            cards: formattedCards
-                        });
-                    } else {
-                        setAchievementsData({
-                            title: 'Our Achievements',
-                            description: 'No description available.',
-                            cards: []
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error fetching achievements:', error);
-                    setAchievementsData({
-                        title: 'Our Achievements',
-                        description: 'Error loading achievements data.',
-                        cards: []
-                    });
-                });
-        };
-
-        fetchAchievements();
-
-        socket.on('ourachievementsUpdated', (data) => {
+        // Function to process achievement data
+        const processAchievementData = (data) => {
             if (data) {
                 const formattedCards = (data.cards || [])
                     .filter((achievement) => achievement.title && achievement.icon && achievement.description)
@@ -115,9 +72,53 @@ export default function Achievements() {
                     cards: []
                 });
             }
+        };
+
+        // Initial fetch
+        const fetchAchievements = () => {
+            fetch('http://localhost:5000/api/ourachievements')
+                .then((response) => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then((response) => {
+                    if (response.success && response.data) {
+                        processAchievementData(response.data);
+                    } else {
+                        processAchievementData(null);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching achievements:', error);
+                    processAchievementData(null);
+                });
+        };
+
+        fetchAchievements();
+
+        // Socket listeners
+        socket.on('ourAchievements_created', (data) => {
+            processAchievementData(data);
         });
 
-        return () => socket.off('ourachievementsUpdated');
+        socket.on('ourAchievements_updated', (data) => {
+            processAchievementData(data);
+        });
+
+        socket.on('ourAchievements_deleted', () => {
+            setAchievementsData({
+                title: 'Our Achievements',
+                description: 'Achievements data deleted.',
+                cards: []
+            });
+        });
+
+        // Cleanup
+        return () => {
+            socket.off('ourAchievements_created');
+            socket.off('ourAchievements_updated');
+            socket.off('ourAchievements_deleted');
+        };
     }, []);
 
     return (

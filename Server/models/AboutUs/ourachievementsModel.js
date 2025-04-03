@@ -8,7 +8,7 @@ const cardSchema = new mongoose.Schema({
 });
 
 const ourAchievementsSchema = new mongoose.Schema({
-    title: { type: String, required: true, unique: true },
+    title: { type: String, required: true,},
     description: { type: String, required: true },
     cards: [cardSchema],
 }, { timestamps: true });

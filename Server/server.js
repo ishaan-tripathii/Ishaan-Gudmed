@@ -22,6 +22,7 @@ import mongoose from "mongoose";
 import AboutUs from "./routes/Aboutus/aboutusRoute.js";
 import ourachievements from "./routes/Aboutus/ouracievmentsRoutes.js";
 import ThirdSection from "./routes/Aboutus/thirsectionRoutes.js";
+import patientRoutes from "./routes/patientRoutes.js";
 
 export const app = express();
 
@@ -97,6 +98,8 @@ app.use("/api/why-gudmed", whyGudMedRoutes);
 app.use("/api/aboutus",AboutUs);
 app.use("/api/ourachievements", ourachievements);
 app.use("/api/thirdsection", ThirdSection);
+app.use("/api/patients", patientRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({

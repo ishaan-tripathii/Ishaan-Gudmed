@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-// Example icon imports (adjust based on your actual icons)
-import { FaHospital, FaUserMd, FaGlobe, FaAward, FaChartLine } from 'react-icons/fa';
-import { MdHealthAndSafety, MdOutlineScience } from 'react-icons/md';
+import { toast, Toaster } from 'react-hot-toast';
 
+// Initialize Socket.IO connection
 const socket = io('http://localhost:5000');
 const API_URL = 'http://localhost:5000/api/ourachievements';
 
 const AboutUsAcievment = () => {
+    // State for storing achievements data
     const [ourachievements, setOurachievements] = useState(null);
+    // State for form data
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -21,10 +22,12 @@ const AboutUsAcievment = () => {
         }],
     });
 
+    // Fetch initial data and set up socket listeners
     useEffect(() => {
         fetchOurachievments();
 
-        socket.on('ourachievementsUpdated', (data) => {
+        // Listener for new achievements
+        socket.on('ourAchievements_created', (data) => {
             setOurachievements(data);
             setFormData(data || {
                 title: '',
@@ -36,11 +39,50 @@ const AboutUsAcievment = () => {
                     description: '',
                 }],
             });
+            toast.success('Our Achievements created in real-time!');
         });
 
-        return () => socket.off('ourachievementsUpdated');
+        // Listener for updated achievements
+        socket.on('ourAchievements_updated', (data) => {
+            setOurachievements(data);
+            setFormData(data || {
+                title: '',
+                description: '',
+                cards: [{
+                    icon: '',
+                    iconColor: '#000000',
+                    title: '',
+                    description: '',
+                }],
+            });
+            toast.success('Our Achievements updated in real-time!');
+        });
+
+        // Listener for deleted achievements
+        socket.on('ourAchievements_deleted', () => {
+            setOurachievements(null);
+            setFormData({
+                title: '',
+                description: '',
+                cards: [{
+                    icon: '',
+                    iconColor: '#000000',
+                    title: '',
+                    description: '',
+                }],
+            });
+            toast.success('Our Achievements deleted in real-time!');
+        });
+
+        // Cleanup socket listeners on component unmount
+        return () => {
+            socket.off('ourAchievements_created');
+            socket.off('ourAchievements_updated');
+            socket.off('ourAchievements_deleted');
+        };
     }, []);
 
+    // Fetch achievements data from the API
     const fetchOurachievments = async () => {
         try {
             const response = await axios.get(API_URL);
@@ -67,19 +109,23 @@ const AboutUsAcievment = () => {
             }
         } catch (error) {
             console.log('Error in fetching ourAchievements data:', error);
+            toast.error('Failed to fetch Our Achievements data');
         }
     };
 
+    // Handle changes to top-level form fields (title, description)
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    // Handle changes to card fields
     const handleCardChange = (index, field, value) => {
         const newCards = [...formData.cards];
         newCards[index][field] = value;
         setFormData({ ...formData, cards: newCards });
     };
 
+    // Add a new card to the form
     const addCard = () => {
         setFormData({
             ...formData,
@@ -92,26 +138,19 @@ const AboutUsAcievment = () => {
         });
     };
 
+    // Delete a card from the form
     const deleteCard = (index) => {
         if (formData.cards.length === 1) {
-            alert('You must have at least one card');
+            toast.error('You must have at least one card');
             return;
         }
         const newCards = formData.cards.filter((_, i) => i !== index);
         setFormData({ ...formData, cards: newCards });
     };
 
-    const validateColorCode = (value) => {
-        const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
-        return hexColorRegex.test(value);
-    };
-
+    // Handle form submission for creating new achievements
     const handleCreate = async (e) => {
         e.preventDefault();
-        if (formData.cards.some(card => card.iconColor && !validateColorCode(card.iconColor))) {
-            alert('Please enter valid hex color codes for all cards (e.g., #FF0000)');
-            return;
-        }
         const token = localStorage.getItem('token');
         try {
             const response = await axios.post(API_URL, formData, {
@@ -121,28 +160,25 @@ const AboutUsAcievment = () => {
                 },
             });
             if (response.data.success) {
-                alert('Successfully created ourachievements content');
-                fetchOurachievments();
+                toast.success('Successfully created Our Achievements content');
+                // Socket event will handle the update
             }
         } catch (error) {
-            console.log('Error creating ourachievements content:', error.response?.data || error.message);
-            alert('Failed to create ourachievements content');
+            console.log('Error creating Our Achievements content:', error.response?.data || error.message);
+            toast.error('Failed to create Our Achievements content');
         }
     };
 
+    // Handle form submission for updating existing achievements
     const handleUpdate = async (e) => {
         e.preventDefault();
         if (!ourachievements?._id) {
-            alert('No data to update. Please create data first or refresh the page.');
-            return;
-        }
-        if (formData.cards.some(card => card.iconColor && !validateColorCode(card.iconColor))) {
-            alert('Please enter valid hex color codes for all cards (e.g., #FF0000)');
+            toast.error('No data to update. Please create data first or refresh the page.');
             return;
         }
         const token = localStorage.getItem('token');
         if (!token) {
-            alert('No authentication token found. Please log in.');
+            toast.error('No authentication token found. Please log in.');
             return;
         }
         try {
@@ -153,20 +189,21 @@ const AboutUsAcievment = () => {
                 },
             });
             if (response.data.success) {
-                alert('Successfully updated ourachievements content');
-                fetchOurachievments();
+                toast.success('Successfully updated Our Achievements content');
+                // Socket event will handle the update
             } else {
-                alert('Failed to update ourachievements content: ' + (response.data.message || 'Unknown error'));
+                toast.error('Failed to update Our Achievements content: ' + (response.data.message || 'Unknown error'));
             }
         } catch (error) {
-            console.log('Error updating ourachievements content:', error.response?.data || error.message);
-            alert('Failed to update ourachievements content: ' + (error.response?.data?.message || error.message));
+            console.log('Error updating Our Achievements content:', error.response?.data || error.message);
+            toast.error('Failed to update Our Achievements content: ' + (error.response?.data?.message || error.message));
         }
     };
 
+    // Handle deletion of achievements
     const handleDelete = async () => {
         if (!ourachievements?._id) {
-            alert('No data found to delete');
+            toast.error('No data found to delete');
             return;
         }
         const token = localStorage.getItem('token');
@@ -175,43 +212,25 @@ const AboutUsAcievment = () => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (response.data.success) {
-                alert('Successfully deleted ourachievements content');
-                setOurachievements(null);
-                setFormData({
-                    title: '',
-                    description: '',
-                    cards: [{
-                        icon: '',
-                        iconColor: '#000000',
-                        title: '',
-                        description: '',
-                    }],
-                });
+                toast.success('Successfully deleted Our Achievements content');
+                // Socket event will handle the update
             }
         } catch (error) {
-            console.log('Error deleting ourachievements content:', error.response?.data || error.message);
-            alert('Failed to delete ourachievements content');
+            console.log('Error deleting Our Achievements content:', error.response?.data || error.message);
+            toast.error('Failed to delete Our Achievements content');
         }
     };
 
-    // Map icon names to components (adjust this based on your actual icons)
-    const iconMap = {
-        FaHospital: FaHospital,
-        FaUserMd: FaUserMd,
-        FaGlobe: FaGlobe,
-        FaAward: FaAward,
-        FaChartLine: FaChartLine,
-        MdHealthAndSafety: MdHealthAndSafety,
-        MdOutlineScience: MdOutlineScience,
+    // Validate hex color code
+    const validateColorCode = (value) => {
+        const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+        return hexColorRegex.test(value);
     };
 
-    const renderIcon = (iconName, color) => {
-        const IconComponent = iconMap[iconName];
-        return IconComponent ? <IconComponent color={color} size={30} /> : null;
-    };
-
+    // Render the component
     return (
         <div className="p-6 bg-gray-100 min-h-screen">
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <h1 className="text-3xl font-bold mb-4">Manage Our Achievements</h1>
             <form onSubmit={ourachievements ? handleUpdate : handleCreate}>
                 <div className="mb-4">
@@ -251,28 +270,24 @@ const AboutUsAcievment = () => {
                             <p className="text-sm text-gray-500 mt-1">
                                 Examples: FaHospital, FaUserMd, FaGlobe, FaAward, FaChartLine, MdHealthAndSafety, MdOutlineScience
                             </p>
-                            {card.icon && renderIcon(card.icon, card.iconColor) && (
-                                <div className="mt-2">{renderIcon(card.icon, card.iconColor)}</div>
-                            )}
                         </div>
                         <div className="mb-2">
                             <label className="block text-gray-700">Icon Color (e.g., #FF0000)</label>
                             <input 
                                 type="text" 
                                 value={card.iconColor}
-                                onChange={(e) => handleCardChange(index, 'iconColor', e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || validateColorCode(value)) {
+                                        handleCardChange(index, 'iconColor', value);
+                                    }
+                                }}
                                 className="w-full p-2 border rounded"
                                 placeholder="Enter hex color code (e.g., #FF0000)"
                                 maxLength={7}
                             />
-                            <input
-                                type="color"
-                                value={card.iconColor}
-                                onChange={(e) => handleCardChange(index, 'iconColor', e.target.value)}
-                                className="mt-2"
-                            />
                             <div 
-                                className="w-8 h-8 mt-2 border rounded inline-block ml-2"
+                                className="w-8 h-8 mt-2 border rounded"
                                 style={{ backgroundColor: card.iconColor }}
                             />
                             {!validateColorCode(card.iconColor) && card.iconColor !== '' && (
@@ -320,7 +335,8 @@ const AboutUsAcievment = () => {
                 <div className="flex space-x-4">
                     <button 
                         type="submit" 
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                        disabled={formData.cards.some(card => !validateColorCode(card.iconColor) && card.iconColor !== '')}
                     >
                         {ourachievements ? 'Update' : 'Create'}
                     </button>
