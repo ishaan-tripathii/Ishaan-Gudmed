@@ -25,7 +25,7 @@ import { forgotPassword } from "./controllers/authController.js";
 import gudmedSmartHospitalRoutes from "./routes/gudmedserviceRoutes.js";
 import smartCameraRoutes from "./routes/smartCameraRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
-
+import ourservicesRoutes from "./routes/ourservicesRoutes.js";
 
 
 import mongoose from "mongoose";
@@ -116,10 +116,11 @@ app.use("/api/aboutus", AboutUs);
 app.use("/api/ourachievements", ourachievements);
 app.use("/api/thirdsection", ThirdSection);
 app.use("/api/forgotPassword", forgotPassword);
-//app.use('/api/services', ourservicesRoutes);
+app.use('/api/services', ourservicesRoutes);
 app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
 app.use("/api/smartCamera", smartCameraRoutes);
 app.use("/api/patients", patientRoutes);
+app.use("/api/gudmedservices", ourservicesRoutes);
 
 
 
