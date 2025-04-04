@@ -20,7 +20,7 @@ export const getSmartCamera = async (req, res) => {
 // Create Smart Camera data
 export const createSmartCamera = async (req, res) => {
     try {
-        const { heading, image, icon, content, cards } = req.body;
+        const { heading, image, icon, color, content, cards } = req.body;
 
         const newsmartCamera = new CameraBenefit({
             heading,

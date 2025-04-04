@@ -9,7 +9,9 @@ const smartCameraSchema = new mongoose.Schema({
 // Card Schema for benefits
 const cardSchema = new mongoose.Schema({
   icon: { type: String, required: true },
+  color: { type: String, required: true },
   content: { type: String, required: true }, // Updated 'description' to 'content'
+  smartcamera : [smartCameraSchema]
 });
 
 // Camera Benefit Schema (Stores one heading and multiple cards)
@@ -19,5 +21,4 @@ const cameraBenefitSchema = new mongoose.Schema({
 });
 
 // Exporting schemas
-export { smartCameraSchema, cardSchema };
-export default mongoose.model("CameraBenefit", cameraBenefitSchema);
+export default mongoose.model("CameraBenefitSchema", cameraBenefitSchema);
