@@ -42,6 +42,12 @@ const AboutUsHome = () => {
         >
           <h2 className="text-xl font-semibold text-blue-600">Our Achievements</h2>
         </Link>
+        <Link
+          to="/admin/about-us/join-section"
+          className="p-4 bg-blue-100 rounded-lg hover:bg-blue-200 text-center"
+        >
+          <h2 className="text-xl font-semibold text-blue-600">join section</h2>
+        </Link>
       </nav>
     </div>
   );

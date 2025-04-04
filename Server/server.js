@@ -23,7 +23,8 @@ import AboutUs from "./routes/Aboutus/aboutusRoute.js";
 import ourachievements from "./routes/Aboutus/ouracievmentsRoutes.js";
 import ThirdSection from "./routes/Aboutus/thirsectionRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
-
+import smartCameraRoutes from "./routes/smartCameraRoutes.js";
+import ourservicesRoutes from "./routes/gudmedserviceRoutes.js";
 export const app = express();
 
 const corsOptions = {
@@ -99,6 +100,8 @@ app.use("/api/aboutus",AboutUs);
 app.use("/api/ourachievements", ourachievements);
 app.use("/api/thirdsection", ThirdSection);
 app.use("/api/patients", patientRoutes);
+app.use("/api/smartCamera", smartCameraRoutes);
+app.use("/api/gudmedservices", ourservicesRoutes);
 
 
 app.get("/", (req, res) => {

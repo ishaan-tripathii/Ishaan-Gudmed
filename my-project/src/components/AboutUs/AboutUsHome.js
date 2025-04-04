@@ -100,6 +100,7 @@ import { toast, Toaster } from "react-hot-toast";
 import AboutUsImage from "../../img/AboutUs.pnj.png"; // Adjust path as needed
 import Achievements from "./AchievMent";
 import config from "../../config/config"; // Assuming a config file exists
+import AboutUsLastSection from "./AboutUsLastSection";
 
 const SectionTitle = ({ title }) => (
   <h2 className="text-3xl md:text-5xl font-bold text-center mb-6 sm:mb-16 md:mb-32 lg:mb-16 text-[#2E4168]">
@@ -236,6 +237,7 @@ const AboutUsHome = () => {
         <p className="text-gray-500 text-center text-lg">No About Us data available</p>
       )}
       <Achievements />
+      <AboutUsLastSection></AboutUsLastSection>
     </div>
   );
 };

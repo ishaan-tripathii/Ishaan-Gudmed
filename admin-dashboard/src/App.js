@@ -19,6 +19,7 @@ import AdminFooterPage from './pages/AdminFooterPage.js';
 import AboutUs from "./pages/AboutUs/AboutUsHome.js"
 import AboutUsContent from './pages/AboutUs/AboutUsContent.js';
 import AboutUsAcievment from './pages/AboutUs/AboutUsAcievment.js';
+import AboutUsLastSection from "./pages/AboutUs/AboutusLastSection"
 const App = () => {
   return (
     <AuthProvider>
@@ -42,6 +43,7 @@ const App = () => {
         <Route path="/admin/about-us" element={<AboutUs />} />
         <Route path="/admin/about-us/about-content" element={<AboutUsContent />} />
         <Route path="/admin/about-us/achievements" element={<AboutUsAcievment />} />
+        <Route path="/admin/about-us/join-section" element={<AboutUsLastSection />} />
       </Routes>
     </AuthProvider>
   );

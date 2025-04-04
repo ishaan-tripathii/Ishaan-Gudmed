@@ -7,7 +7,7 @@ export const getWhyGudMedItems = async (req, res) => {
         const items = await WhyGudMed.find();
         res.status(200).json(items);
     } catch (error) {
-        console.error('Error fetching WhyGudMed items:', error);
+      //  console.error('Error fetching WhyGudMed items:', error);
         res.status(500).json({ message: 'Failed to fetch items', error: error.message });
     }
 };
@@ -23,7 +23,7 @@ export const createWhyGudMedItem = async (req, res) => {
 
         res.status(201).json(savedItem);
     } catch (error) {
-        console.error('Error creating WhyGudMed item:', error);
+        //console.error('Error creating WhyGudMed item:', error);
         res.status(500).json({ message: 'Failed to create item', error: error.message });
     }
 };
@@ -46,7 +46,7 @@ export const updateWhyGudMedItem = async (req, res) => {
 
         res.status(200).json(updatedItem);
     } catch (error) {
-        console.error('Error updating WhyGudMed item:', error);
+       // console.error('Error updating WhyGudMed item:', error);
         res.status(500).json({ message: 'Failed to update item', error: error.message });
     }
 };
@@ -65,7 +65,7 @@ export const deleteWhyGudMedItem = async (req, res) => {
 
         res.status(200).json({ message: 'Item deleted successfully', id: req.params.id });
     } catch (error) {
-        console.error('Error deleting WhyGudMed item:', error);
+      //  console.error('Error deleting WhyGudMed item:', error);
         res.status(500).json({ message: 'Failed to delete item', error: error.message });
     }
 }; 
