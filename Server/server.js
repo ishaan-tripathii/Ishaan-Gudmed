@@ -123,7 +123,6 @@ app.use("/api/patients", patientRoutes);
 
 
 
-
 //app.use("/api/thirdsection
 // Root route
 app.get("/", (req, res) => {

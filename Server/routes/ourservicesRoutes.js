@@ -10,8 +10,7 @@ const router = express.Router();
 
 router.get("/", getOurServices);
 router.post("/", createOurServices);
-router.put("/", updateOurServices);
+router.put("/:id", updateOurServices);
 router.delete("/:id",deleteOurServices);
 
 export default router;
-

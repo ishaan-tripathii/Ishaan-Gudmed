@@ -8,7 +8,7 @@ const Patient = mongoose.model("Patient", patientSchema);
 // ✅ Get Patient data (Updated)
 export const getPatient = async (req, res) => {
   try {
-    const patient = await Patient.findById(req.params.id); // Fetch a specific patient
+    const patient = await Patient.findOne(); // Fetch a specific patient
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }

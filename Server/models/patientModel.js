@@ -1,26 +1,27 @@
 import mongoose from 'mongoose';
 
-const patientSchema = new mongoose.Schema({
-    heading: { type: String },
-    subheading: { type: String },
-    image: { type: String },
-    button1: { type: String },
-    button2: { type: String },
-    button1colour: { type: String },
-    button2colour: { type: String },  
-    buttonUrl1: { type: String },
-    buttonUrl2: { type: String },
-    features: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }] 
+const keyfeatureSchema = new mongoose.Schema({
+    image: String,
+    content: String
 });
 
 const featureSchema = new mongoose.Schema({
-    title: { type: String },  
-    keyFeatures: [{ type: mongoose.Schema.Types.ObjectId, ref: "KeyFeature" }]
+    title: String,
+    keyFeatures: [keyfeatureSchema] // Directly embedding the array of objects
 });
 
-const keyfeatureSchema = new mongoose.Schema({
-    image: { type: String },
-    content: { type: String }
+const patientSchema = new mongoose.Schema({
+    heading: String,
+    subheading: String,
+    image: String,
+    button1: String,
+    button2: String,
+    button1colour: String,
+    button2colour: String,
+    buttonUrl1: String,
+    buttonUrl2: String,
+    features: [featureSchema] // Directly embedding the array of objects
 });
 
 export { patientSchema, featureSchema, keyfeatureSchema };
+
