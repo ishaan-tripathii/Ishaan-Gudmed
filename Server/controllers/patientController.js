@@ -22,8 +22,8 @@ export const getPatient = async (req, res) => {
 // ✅ Create Patient data
 export const createPatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button, content } = req.body;
-    const newPatient = new Patient({ heading, subheading, image, button, content });
+    const { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features } = req.body;
+    const newPatient = new Patient({ heading, subheading, image, button1, button2, button1colour , button2colour , buttonUrl1 , buttonUrl2 , features });
     const savedPatient = await newPatient.save();
     notifyClients?.("patientUpdated", savedPatient);
     res.status(201).json({ success: true, data: savedPatient });
@@ -36,10 +36,10 @@ export const createPatient = async (req, res) => {
 // ✅ Update Patient data
 export const updatePatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button, content } = req.body;
+    const { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features } = req.body;
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
-      { heading, subheading, image, button, content },
+      { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features },
       { new: true }
     );
     if (!updatedPatient) {

@@ -23,5 +23,5 @@ const patientSchema = new mongoose.Schema({
     features: [featureSchema] // Directly embedding the array of objects
 });
 
-export { patientSchema, featureSchema, keyfeatureSchema };
+export { patientSchema };
 
