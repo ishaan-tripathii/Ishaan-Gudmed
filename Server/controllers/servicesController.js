@@ -18,17 +18,17 @@ export const getOurServices = async (req, res) => {
 // Create Our Services
 export const createOurServices = async (req, res) => {
     try {
-        const { heading, description, icon, content } = req.body;
+        const { heading, description, cards, works } = req.body;
 
         const newOurServices = new Service({
             heading,
             description,
-            icon,
-            content
+            cards,
+            works
         });
 
         const savedOurServices = await newOurServices.save();
-        notifyClients("OurServicesUpdated", savedOurServices); 
+        notifyClients("OurServicesUpdated", savedOurServices);
 
         res.status(201).json({ success: true, data: savedOurServices });
     } catch (error) {
@@ -37,14 +37,15 @@ export const createOurServices = async (req, res) => {
     }
 };
 
+
 // Update Our Services
 export const updateOurServices = async (req, res) => {
     try {
-        const { heading, description, icon, content } = req.body;
+        const { heading, description, cards, works } = req.body;
 
         const updatedOurServices = await Service.findOneAndUpdate(
             {},
-            { heading, description, icon, content },
+            { heading, description, cards, works },
             { new: true, upsert: true }
         );
 
