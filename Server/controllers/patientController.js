@@ -5,10 +5,10 @@ import { notifyClients } from "../services/socket.js";
 // Create the Patient model
 const Patient = mongoose.model("Patient", patientSchema);
 
-// ✅ Get Patient data (Updated)
+// Get Patient data
 export const getPatient = async (req, res) => {
   try {
-    const patient = await Patient.findOne(); // Fetch a specific patient
+    const patient = await Patient.findOne(); // Get the singleton document
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
@@ -19,13 +19,46 @@ export const getPatient = async (req, res) => {
   }
 };
 
-// ✅ Create Patient data
+// Create Patient data with singleton check
 export const createPatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features } = req.body;
-    const newPatient = new Patient({ heading, subheading, image, button1, button2, button1colour , button2colour , buttonUrl1 , buttonUrl2 , features });
+    const existingPatient = await Patient.findOne();
+    if (existingPatient) {
+      return res.status(409).json({
+        success: false,
+        message: "Patient section already exists. Please use the update endpoint instead.",
+      });
+    }
+
+    const {
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features,
+    } = req.body;
+
+    const newPatient = new Patient({
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features,
+    });
+
     const savedPatient = await newPatient.save();
     notifyClients?.("patientUpdated", savedPatient);
+
     res.status(201).json({ success: true, data: savedPatient });
   } catch (error) {
     console.error("Error creating Patient data:", error);
@@ -33,18 +66,43 @@ export const createPatient = async (req, res) => {
   }
 };
 
-// ✅ Update Patient data
+// Update Patient data (singleton)
 export const updatePatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features } = req.body;
-    const updatedPatient = await Patient.findByIdAndUpdate(
-      req.params.id,
-      { heading, subheading, image, button1, button2, button1colour, button2colour, buttonUrl1, buttonUrl2, features },
+    const {
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features,
+    } = req.body;
+
+    const updatedPatient = await Patient.findOneAndUpdate(
+      {}, // empty filter for singleton doc
+      {
+        heading,
+        subheading,
+        image,
+        button1,
+        button2,
+        button1colour,
+        button2colour,
+        buttonUrl1,
+        buttonUrl2,
+        features,
+      },
       { new: true }
     );
+
     if (!updatedPatient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
+
     notifyClients?.("patientUpdated", updatedPatient);
     res.status(200).json({ success: true, data: updatedPatient });
   } catch (error) {
@@ -53,13 +111,14 @@ export const updatePatient = async (req, res) => {
   }
 };
 
-// ✅ Delete Patient data
+// Delete Patient data
 export const deletePatient = async (req, res) => {
   try {
     const patient = await Patient.findByIdAndDelete(req.params.id);
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
+
     notifyClients?.("patientUpdated", null);
     res.status(200).json({ success: true, message: "Patient data deleted successfully" });
   } catch (error) {

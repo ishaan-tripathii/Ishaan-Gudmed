@@ -13,7 +13,7 @@ router.get("/", getPatient)
 
 //Protected routes
 router.post("/", authenticateToken, createPatient )
-router.put("/:id", authenticateToken, updatePatient )
-router.delete("/:id", authenticateToken, deletePatient )
+router.put("/", authenticateToken, updatePatient )
+router.delete("/", authenticateToken, deletePatient )
 
 export default router;
