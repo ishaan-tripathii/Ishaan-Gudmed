@@ -21,4 +21,4 @@ const cameraBenefitSchema = new mongoose.Schema({
 });
 
 // Exporting schemas
-export default mongoose.model("CameraBenefitSchema", cameraBenefitSchema);
+export default mongoose.model("CameraBenefit", cameraBenefitSchema);

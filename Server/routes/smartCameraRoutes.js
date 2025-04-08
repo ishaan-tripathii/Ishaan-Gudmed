@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.get("/", getSmartCamera);
 router.post("/", createSmartCamera);
-router.put("/",updateSmartCamera );
+router.put("/:id",updateSmartCamera );
 router.delete("/:id", deleteSmartCamera);
 
 export default router;

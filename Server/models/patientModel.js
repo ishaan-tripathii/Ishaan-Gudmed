@@ -25,3 +25,5 @@ const patientSchema = new mongoose.Schema({
 
 export { patientSchema };
 
+
+// Exporting the model

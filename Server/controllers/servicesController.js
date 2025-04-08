@@ -4,7 +4,7 @@ import { notifyClients } from "../services/socket.js"; // Ensure correct path
 // Get Services Data
 export const getOurServices = async (req, res) => {
     try {
-        const ourServices = await Service.findOne({});
+        const ourServices = await Service.find();
         if (!ourServices) {
             return res.status(404).json({ success: false, message: "Our Services data not found" });
         }
@@ -43,8 +43,8 @@ export const updateOurServices = async (req, res) => {
     try {
         const { heading, description, cards, works } = req.body;
 
-        const updatedOurServices = await Service.findOneAndUpdate(
-            {},
+        const updatedOurServices = await Service.findByIdAndUpdate(
+            req.params.id, // Get ID from URL
             { heading, description, cards, works },
             { new: true, upsert: true }
         );
@@ -60,7 +60,7 @@ export const updateOurServices = async (req, res) => {
 // Delete Our Services
 export const deleteOurServices = async (req, res) => {
     try {
-        const ourServices = await Service.findOneAndDelete({});
+        const ourServices = await Service.findByIdAndDelete(req.params.id); // Get ID from URL
         if (!ourServices) {
             return res.status(404).json({ success: false, message: "Our Services data not found" });
         }
