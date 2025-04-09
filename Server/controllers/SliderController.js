@@ -1,4 +1,3 @@
-// controllers/pagesController.js
 import Page from '../models/Slider.js';
 import { notifyClients } from '../services/socket.js';
 
@@ -15,11 +14,14 @@ const getPages = async (req, res) => {
 const createPage = async (req, res) => {
   try {
     const { titleDesktop, titleMobile, gradientWords, gradient, benefits, slug } = req.body;
+    console.log('Creating page with data:', { titleDesktop, titleMobile, gradientWords, gradient, benefits, slug });
     const page = new Page({ titleDesktop, titleMobile, gradientWords, gradient, benefits, slug });
-    await page.save();
-    notifyClients('pageCreated', page); // Updated to use 'pageCreated'
-    res.status(201).json(page);
+    const savedPage = await page.save();
+    console.log('Created page:', savedPage);
+    notifyClients('pageCreated', savedPage);
+    res.status(201).json(savedPage);
   } catch (error) {
+    console.error('Create page error:', error.message);
     res.status(400).json({ message: error.message });
   }
 };
@@ -27,17 +29,25 @@ const createPage = async (req, res) => {
 const updatePage = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Update request for id:', id);
+    console.log('Update request body:', req.body);
     const { titleDesktop, titleMobile, gradientWords, gradient, benefits, slug } = req.body;
     const page = await Page.findByIdAndUpdate(
       id,
       { titleDesktop, titleMobile, gradientWords, gradient, benefits, slug },
-      { new: true }
+      { new: true, runValidators: true }
     );
-    if (!page) return res.status(404).json({ message: 'Page not found' });
-    const pageData = page.toJSON(); // Convert Mongoose document to plain JSON
-    notifyClients('pageUpdated', pageData); // Updated to use 'pageUpdated'
+    if (!page) {
+      console.log('Page not found for id:', id);
+      return res.status(404).json({ message: 'Page not found' });
+    }
+    console.log('Updated page (Mongoose doc):', page); // Log the Mongoose document
+    const pageData = page.toJSON(); // Convert to plain JSON
+    console.log('Converted pageData:', pageData); // Log the result of toJSON
+    notifyClients('pageUpdated', pageData); // Emit the converted data
     res.json(pageData);
   } catch (error) {
+    console.error('Update page error:', error.message, error.stack);
     res.status(400).json({ message: error.message });
   }
 };
@@ -45,11 +55,17 @@ const updatePage = async (req, res) => {
 const deletePage = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Delete request for id:', id);
     const page = await Page.findByIdAndDelete(id);
-    if (!page) return res.status(404).json({ message: 'Page not found' });
-    notifyClients('pageDeleted', page.slug); // Updated to use 'pageDeleted'
+    if (!page) {
+      console.log('Page not found for id:', id);
+      return res.status(404).json({ message: 'Page not found' });
+    }
+    console.log('Deleted page slug:', page.slug);
+    notifyClients('pageDeleted', page.slug);
     res.json({ message: 'Page deleted successfully' });
   } catch (error) {
+    console.error('Delete page error:', error.message);
     res.status(500).json({ message: error.message });
   }
 };

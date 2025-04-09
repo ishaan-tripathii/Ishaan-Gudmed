@@ -2,8 +2,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { createServer } from "http";
+import mongoose from "mongoose";
 import connectDB from "./config/db.js";
-import { initSocket, notifyClients } from "./services/socket.js";
+import { initSocket } from "./services/socket.js";
 import pageRoutes from "./routes/pages.js";
 import postRoutes from "./routes/posts.js";
 import authRoutes from "./routes/auth.js";
@@ -18,13 +19,17 @@ import animatedTextRoutes from "./routes/animatedTextRoutes.js";
 import imageComparisonRoutes from "./routes/imageComparisonRoutes.js";
 import footerRoutes from "./routes/footerRoutes.js";
 import whyGudMedRoutes from "./routes/WhyGudMedisUniqueRoutes.js";
-import mongoose from "mongoose";
 import AboutUs from "./routes/Aboutus/aboutusRoute.js";
 import ourachievements from "./routes/Aboutus/ouracievmentsRoutes.js";
 import ThirdSection from "./routes/Aboutus/thirsectionRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
 import smartCameraRoutes from "./routes/smartCameraRoutes.js";
-import ourservicesRoutes from "./routes/gudmedserviceRoutes.js";
+import ourservicesRoutes from "./routes/ourservicesRoutes.js";
+import gudmedSmartHospitalRoutes from "./routes/gudmedserviceRoutes.js";
+import hospitalRoutes from "./routes/Hospital/hospitalRoutes.js";
+import icuAutomationRoutes from "./routes/Hospital/IcuAutomationRoutes.js";
+import SmartCareRoutes from "./routes/Hospital/SmartCareRoutes.js"
+import HospitalMrdRoutes from "./routes/Hospital/HospitalMrdRoutes.js"
 export const app = express();
 
 const corsOptions = {
@@ -82,6 +87,7 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// Define API routes
 app.use("/api/pages", pageRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/auth", authRoutes);
@@ -96,13 +102,17 @@ app.use("/api/animated-text", animatedTextRoutes);
 app.use("/api/image-comparison", imageComparisonRoutes);
 app.use("/api/footer", footerRoutes);
 app.use("/api/why-gudmed", whyGudMedRoutes);
-app.use("/api/aboutus",AboutUs);
+app.use("/api/aboutus", AboutUs);
 app.use("/api/ourachievements", ourachievements);
 app.use("/api/thirdsection", ThirdSection);
+ app.use("/api/services", ourservicesRoutes);
+app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/smartCamera", smartCameraRoutes);
-app.use("/api/gudmedservices", ourservicesRoutes);
-
+app.use("/api/hospital", hospitalRoutes);
+app.use("/api/icu-automation", icuAutomationRoutes);
+app.use("/api/Smartcare",SmartCareRoutes);
+app.use("/api/mrd",HospitalMrdRoutes);
 
 app.get("/", (req, res) => {
   res.json({
@@ -113,7 +123,7 @@ app.get("/", (req, res) => {
 });
 
 const httpServer = createServer(app);
-const io = initSocket(httpServer); // Initialize Socket.IO once
+const io = initSocket(httpServer);
 
 const startServer = async () => {
   try {

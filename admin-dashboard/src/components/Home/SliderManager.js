@@ -7,7 +7,7 @@ import Card from "../common/Card";
 import PageForm from "../PageForm";
 import axios from "axios";
 import io from "socket.io-client";
-import config from "../../config/config"; // Adjust the path if needed
+import config from "../../config/config";
 
 const api = axios.create({
   baseURL: `${config.apiBaseUrl}/api`,
@@ -70,18 +70,16 @@ const SliderManager = () => {
 
     fetchPages();
 
-    socket.on("connect", () => {
-      setMessage("Socket.IO connected");
-      setMessageType("info");
-    });
-
+    socket.on("connect", () => console.log("SliderManager connected to socket:", socket.id));
     socket.on("pageCreated", (newPage) => {
+      console.log("Socket pageCreated received:", newPage);
       setPages((prev) => [...prev, newPage]);
       setMessage("New slide created in real-time!");
       setMessageType("success");
     });
 
     socket.on("pageUpdated", (updatedPage) => {
+      console.log("Socket pageUpdated received:", updatedPage);
       setPages((prev) =>
         prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
       );
@@ -90,12 +88,14 @@ const SliderManager = () => {
     });
 
     socket.on("pageDeleted", (slug) => {
+      console.log("Socket pageDeleted received:", slug);
       setPages((prev) => prev.filter((page) => page.slug !== slug));
       setMessage("Slide deleted in real-time!");
       setMessageType("success");
     });
 
     socket.on("connect_error", (err) => {
+      console.error("Socket connect error:", err.message);
       setMessage("Socket.IO connection error");
       setMessageType("error");
     });

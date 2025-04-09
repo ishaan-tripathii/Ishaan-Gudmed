@@ -1,12 +1,9 @@
-// src/components/PageForm.jsx
 import React, { useState, useEffect } from "react";
 import Modal from "../components/common/Modal";
 import { toast } from "react-toastify";
 import axios from "axios";
-import io from "socket.io-client";
-import config from "../config/config"; // Import the config file
+import config from "../config/config";
 
-// API and Socket.IO configuration
 const api = axios.create({
   baseURL: `${config.apiBaseUrl}/api`,
   headers: {
@@ -14,7 +11,6 @@ const api = axios.create({
   },
 });
 
-// Add an interceptor to include the token in every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -37,45 +33,11 @@ const PageForm = ({ pageToEdit, onClose, isOpen }) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Gradient style options
   const gradientOptions = [
     { value: "bg-gradient-to-r from-blue-400 to-purple-500", label: "Blue to Purple" },
     { value: "bg-gradient-to-r from-purple-400 to-pink-500", label: "Purple to Pink" },
     { value: "bg-gradient-to-r from-pink-500 to-red-500", label: "Pink to Red" },
   ];
-
-  // Initialize Socket.IO
-  useEffect(() => {
-    const socket = io(config.socketBaseUrl, {
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
-
-    socket.on("connect", () => {
-      // Removed console.log
-    });
-
-    socket.on("pageCreated", (newPage) => {
-      toast.success("New slide created in real-time!");
-    });
-
-    socket.on("pageUpdated", (updatedPage) => {
-      toast.success("Slide updated in real-time!");
-    });
-
-    socket.on("pageDeleted", (slug) => {
-      toast.success("Slide deleted in real-time!");
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("Socket.IO connection error in PageForm:", err.message);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
 
   // Populate form with pageToEdit data when editing
   useEffect(() => {

@@ -1,86 +1,141 @@
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import io from "socket.io-client";
+import axios from "axios";
 import { FaHeartbeat, FaChartLine, FaTools, FaIndustry } from "react-icons/fa";
-import MonitoringImage from "../../img/SmartPatientMonitroing.jpg";
-import OutcomesImage from "../../img/EnhancedPatientoutcomes.jpg";
-import WorkflowImage from "../../img/GudmedMission.png.jpg";
-import MarketImage from "../../img/HospitalMarketing.png.jpg";
+import config from "../../config/config";
+
+const socket = io(config.socketBaseUrl, { withCredentials: true });
+
+const iconMap = {
+  FaHeartbeat: FaHeartbeat,
+  FaChartLine: FaChartLine,
+  FaTools: FaTools,
+  FaIndustry: FaIndustry,
+};
 
 const GudmedICUAutomation = () => {
-    const features = [
-        {
-            icon: <FaHeartbeat size={30} className="text-blue-600" />,
-            title: "Smart Patient Monitoring",
-            description:
-                "Real-time data capture from multiple devices, providing accurate patient data for informed decision-making.",
-            image: MonitoringImage,
-        },
-        {
-            icon: <FaChartLine size={30} className="text-blue-600" />,
-            title: "Enhanced Patient Outcomes",
-            description:
-                "Dashboards for seamless collaboration between nurses and doctors, improving patient outcomes through coordinated care.",
-            image: OutcomesImage,
-        },
-        {
-            icon: <FaTools size={30} className="text-blue-600" />,
-            title: "Efficient Workflow Management",
-            description:
-                "Optimizes workflows by automating routine tasks, freeing healthcare providers to focus on patient care.",
-            image: WorkflowImage,
-        },
-        {
-            icon: <FaIndustry size={30} className="text-blue-600" />,
-            title: "Industry Impact and Market Potential",
-            description:
-                "With the tele-ICU market projected to grow, Gudmed is at the forefront of ICU tech solutions.",
-            image: MarketImage,
-        },
-    ];
+  const [icuData, setIcuData] = useState({ title: "", description: "", features: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    return (
-        <div className="bg-white  ">
-            <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
-                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-4xl font-semibold text-[#2E4168] mb-6 text-center pt-8 px-4">
-                    Revolutionizing ICU Automation with Gudmed
-                </h2>
-                <p className="text-sm sm:text-base lg:text-lg text-gray-600 leading-relaxed mb-10 text-center px-0 sm:px-20">
-                    Gudmed is transforming Intensive Care Unit (ICU) management with cutting-edge AI solutions designed to improve patient outcomes, streamline workflows, and empower healthcare professionals.
-                </p>
+  const fetchIcuAutomationData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${config.apiBaseUrl}/api/icu-automation`);
+      console.log("API Response:", response.data); // Debug log
+      setIcuData(response.data || { title: "", description: "", features: [] });
+    } catch (error) {
+      console.error("Error fetching ICU automation data:", error.response || error);
+      setError("Failed to load ICU automation data.");
+      setIcuData({ title: "", description: "", features: [] });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-                {/* Responsive Grid Layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 lg:gap-8 px-4 sm:px-8 pb-10">
-                    {features.map((feature, index) => (
+  useEffect(() => {
+    fetchIcuAutomationData();
+
+    // Real-time updates with Socket.IO
+    socket.on("connect", () => console.log("GudmedICUAutomation connected to socket:", socket.id));
+    socket.on("icuAutomation_create", (data) => {
+      console.log("Socket create received:", data);
+      setIcuData((prev) => ({ ...prev, features: [...prev.features, data] }));
+    });
+
+    socket.on("icuAutomation_update", (data) => {
+      console.log("Socket update received:", data);
+      // Use the full updated document from the backend
+      setIcuData(data);
+    });
+
+    socket.on("icuAutomation_delete", (data) => {
+      console.log("Socket delete received:", data);
+      setIcuData((prev) => ({
+        ...prev,
+        features: prev.features.filter((f) => f._id !== data.id),
+      }));
+    });
+
+    socket.on("disconnect", () => console.log("GudmedICUAutomation disconnected from socket"));
+    socket.on("connect_error", (error) => console.error("Socket connect error:", error.message));
+    socket.on("error", (error) => console.error("Socket error:", error.message));
+
+    return () => {
+      socket.off("connect");
+      socket.off("icuAutomation_create");
+      socket.off("icuAutomation_update");
+      socket.off("icuAutomation_delete");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("error");
+    };
+  }, [fetchIcuAutomationData]); // No state dependencies to avoid re-render loops
+
+  return (
+    <div className="bg-gray-50 py-10">
+      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden p-6">
+        {loading ? (
+          <p className="text-gray-700 text-center pb-10">Loading ICU features...</p>
+        ) : error ? (
+          <p className="text-red-500 text-center pb-10">{error}</p>
+        ) : icuData ? (
+          <>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-4xl font-semibold text-[#2E4168] mb-6 text-center">
+              {icuData.title}
+            </h2>
+            <p className="text-sm sm:text-base lg:text-lg text-gray-600 leading-relaxed mb-10 text-center px-4 sm:px-20">
+              {icuData.description}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4 pb-10">
+              {icuData.features.length > 0 ? (
+                icuData.features.map((feature, index) => {
+                  const IconComponent = iconMap[feature.icon] || FaHeartbeat; // Default to FaHeartbeat if icon not found
+                  return (
+                    <div
+                      key={index}
+                      className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-4"
+                      style={{ borderRadius: "20px" }}
+                    >
+                      <div className="w-full mb-4">
+                        <img
+                          src={feature.imageSrc}
+                          alt={feature.title}
+                          className="w-full h-48 object-cover rounded-lg shadow-md"
+                          onError={(e) => (e.target.src = "https://via.placeholder.com/192")}
+                        />
+                      </div>
+                      <div className="flex items-center space-x-4 mb-4">
                         <div
-                            key={index}
-                            className="flex flex-col bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-md hover:shadow-xl transition-transform transform hover:-translate-y-2 p-4 sm:p-6 lg:p-8"
+                          className="p-3 rounded-full shadow-md flex items-center justify-center"
+                          style={{ backgroundColor: feature.iconBgColor || "#DBEAFE" }}
                         >
-                            {/* Image */}
-                            <div className="w-full mb-4 sm:mb-6">
-                                <img
-                                    src={feature.image}
-                                    alt={feature.title}
-                                    className="w-full h-56 sm:h-64 lg:h-72 object-cover rounded-lg shadow-lg"
-                                />
-                            </div>
-
-                            {/* Icon, Title, and Description */}
-                            <div className="flex items-center space-x-4 mb-4">
-                                <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-4 rounded-full shadow-md">
-                                    {feature.icon}
-                                </div>
-                                <h3 className="text-xl sm:text-2xl font-semibold text-[#2E4168]">
-                                    {feature.title}
-                                </h3>
-                            </div>
-                            <p className="text-sm sm:text-base lg:text-lg text-gray-700 leading-relaxed">
-                                {feature.description}
-                            </p>
+                          {IconComponent && (
+                            <IconComponent size={24} style={{ color: feature.iconColor || "#2563EB" }} />
+                          )}
                         </div>
-                    ))}
-                </div>
+                        <h3 className="text-xl font-semibold text-[#2E4168]">
+                          {feature.title}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-gray-700 text-center">No ICU features available.</p>
+              )}
             </div>
-        </div>
-    );
+          </>
+        ) : (
+          <p className="text-gray-700 text-center pb-10">No ICU data available.</p>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default GudmedICUAutomation;

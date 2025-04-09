@@ -5,10 +5,10 @@ import { notifyClients } from "../services/socket.js";
 // Create the Patient model
 const Patient = mongoose.model("Patient", patientSchema);
 
-// ✅ Get Patient data (Updated)
+// Get Patient Data
 export const getPatient = async (req, res) => {
   try {
-    const patient = await Patient.findOne(); // Fetch a specific patient
+    const patient = await Patient.find();
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
@@ -19,11 +19,35 @@ export const getPatient = async (req, res) => {
   }
 };
 
-// ✅ Create Patient data
+// Create Patient Data
 export const createPatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button, content } = req.body;
-    const newPatient = new Patient({ heading, subheading, image, button, content });
+    const {
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features
+    } = req.body;
+
+    const newPatient = new Patient({
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features
+    });
+
     const savedPatient = await newPatient.save();
     notifyClients?.("patientUpdated", savedPatient);
     res.status(201).json({ success: true, data: savedPatient });
@@ -33,18 +57,39 @@ export const createPatient = async (req, res) => {
   }
 };
 
-// ✅ Update Patient data
+// Update Patient Data
 export const updatePatient = async (req, res) => {
   try {
-    const { heading, subheading, image, button, content } = req.body;
-    const updatedPatient = await Patient.findByIdAndUpdate(
-      req.params.id,
-      { heading, subheading, image, button, content },
-      { new: true }
+    const {
+      heading,
+      subheading,
+      image,
+      button1,
+      button2,
+      button1colour,
+      button2colour,
+      buttonUrl1,
+      buttonUrl2,
+      features
+    } = req.body;
+
+    const updatedPatient = await Patient.findOneAndUpdate(
+      {},
+      {
+        heading,
+        subheading,
+        image,
+        button1,
+        button2,
+        button1colour,
+        button2colour,
+        buttonUrl1,
+        buttonUrl2,
+        features
+      },
+      { new: true, upsert: true }
     );
-    if (!updatedPatient) {
-      return res.status(404).json({ success: false, message: "Patient data not found" });
-    }
+
     notifyClients?.("patientUpdated", updatedPatient);
     res.status(200).json({ success: true, data: updatedPatient });
   } catch (error) {
@@ -53,14 +98,15 @@ export const updatePatient = async (req, res) => {
   }
 };
 
-// ✅ Delete Patient data
+// Delete Patient Data
 export const deletePatient = async (req, res) => {
   try {
-    const patient = await Patient.findByIdAndDelete(req.params.id);
-    if (!patient) {
+    const deletedPatient = await Patient.findOneAndDelete({});
+    if (!deletedPatient) {
       return res.status(404).json({ success: false, message: "Patient data not found" });
     }
-    notifyClients?.("patientUpdated", null);
+
+    notifyClients?.("patientDeleted", null);
     res.status(200).json({ success: true, message: "Patient data deleted successfully" });
   } catch (error) {
     console.error("Error deleting Patient data:", error);

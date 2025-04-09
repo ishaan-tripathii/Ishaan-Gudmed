@@ -4,9 +4,9 @@ import { notifyClients } from '../services/socket.js';
 // Get Smart Camera data
 export const getSmartCamera = async (req, res) => {
     try {
-        const smartCamera = await CameraBenefit.find(); // Fetch data from the database
+        const smartCamera = await CameraBenefit.find();
 
-        if (!smartCamera) {
+        if (!smartCamera || smartCamera.length === 0) {
             return res.status(404).json({ success: false, message: "Smart Camera data not found" });
         }
 
@@ -16,6 +16,7 @@ export const getSmartCamera = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
 
 // Create Smart Camera data
 export const createSmartCamera = async (req, res) => {
@@ -73,3 +74,9 @@ export const deleteSmartCamera = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+``
+
+
+
+
+

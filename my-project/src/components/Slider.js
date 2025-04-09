@@ -1,7 +1,6 @@
-// src/components/Slider.js
 import React, { useState, useEffect, useRef } from "react";
-import AliceCarousel from "react-alice-carousel"; // Corrected import
-import "react-alice-carousel/lib/alice-carousel.css"; // Import CSS
+import AliceCarousel from "react-alice-carousel";
+import "react-alice-carousel/lib/alice-carousel.css";
 import "animate.css";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import io from "socket.io-client";
@@ -48,7 +47,7 @@ const Slider = () => {
     const fetchSliderPages = async () => {
       try {
         const response = await api.get("/pages");
-        setData(response.data || []);
+        setData(Array.isArray(response.data) ? response.data : []);
         setLoading(false);
       } catch (err) {
         setError("Failed to load slider pages");
@@ -58,37 +57,40 @@ const Slider = () => {
 
     fetchSliderPages();
 
-    socket.on("connect", () => {
-      // Handle connection
-    });
-
+    // Real-time updates with Socket.IO
+    socket.on("connect", () => console.log("Slider connected to socket:", socket.id));
     socket.on("pageCreated", (newPage) => {
+      console.log("Socket pageCreated received:", newPage);
       setData((prev) => [...prev, newPage]);
     });
 
     socket.on("pageUpdated", (updatedPage) => {
+      console.log("Socket pageUpdated received:", updatedPage);
       setData((prev) =>
         prev.map((page) => (page._id === updatedPage._id ? updatedPage : page))
       );
     });
 
     socket.on("pageDeleted", (slug) => {
+      console.log("Socket pageDeleted received:", slug);
       setData((prev) => prev.filter((page) => page.slug !== slug));
     });
 
-    socket.on("connect_error", (err) => {
-      // Handle connection error
-    });
+    socket.on("disconnect", () => console.log("Slider disconnected from socket"));
+    socket.on("connect_error", (error) => console.error("Socket connect error:", error.message));
+    socket.on("error", (error) => console.error("Socket error:", error.message));
 
     return () => {
       socket.off("connect");
       socket.off("pageCreated");
       socket.off("pageUpdated");
       socket.off("pageDeleted");
+      socket.off("disconnect");
       socket.off("connect_error");
+      socket.off("error");
       socket.disconnect();
     };
-  }, []);
+  }, []); // No state dependencies to avoid re-render loops
 
   useEffect(() => {
     const updateScreenSize = () => setIsMobile(window.innerWidth < 768);
