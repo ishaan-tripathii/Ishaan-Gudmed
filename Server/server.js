@@ -27,6 +27,8 @@ import smartCameraRoutes from "./routes/smartCameraRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
 import ourservicesRoutes from "./routes/ourservicesRoutes.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
+import gudmedHealthcareRoutes from "./routes/gudmedhealthcareRoutes.js";
+import gudmedtodayRoutes from "./routes/gudmedtodayRoutes.js";
 
 
 import mongoose from "mongoose";
@@ -123,6 +125,9 @@ app.use("/api/smartCamera", smartCameraRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/gudmedservices", ourservicesRoutes);
 app.use("/api/hospital", hospitalRoutes);
+app.use("/api/gudmedHealthcare", gudmedHealthcareRoutes);
+app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
+app.use("/api/gudmedtoday", gudmedtodayRoutes);
 
 //app.use("/api/thirdsection
 // Root route

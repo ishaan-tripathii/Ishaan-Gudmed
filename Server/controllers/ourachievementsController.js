@@ -47,7 +47,7 @@ export const createOurAchievements = async (req, res) => {
     }
 };
 
-// ✅ Update Our Achievements Data (Now Uses `req.params.id`)
+//Update Our Achievements Data (Now Uses `req.params.id`)
 export const updateOurAchievements = async (req, res) => {
     try {
         const { title, description, cards } = req.body;
@@ -58,7 +58,7 @@ export const updateOurAchievements = async (req, res) => {
             { new: true }
         );
 
-        if (!updatedData) {
+        if (!updatedData) { 
             return res.status(404).json({ 
                 success: false, 
                 message: "Our Achievements data not found" 

@@ -6,11 +6,13 @@ import {
     deleteDigitalHospital
 }  from '../controllers/hospitalControllers.js'
 
+import authenticateToken from "../middleware/auth.js"; // Ensure correct path
 const router = express.Router();
 
 router.get("/", getDigitalHospital);
-router.post("/", createDigitalHospital);
-router.put("/:id", updateDigitalHospital);
-router.delete("/:id", deleteDigitalHospital);
+// Protected routes
+router.post("/", authenticateToken, createDigitalHospital);
+router.put("/:id", authenticateToken, updateDigitalHospital);
+router.delete("/:id", authenticateToken, deleteDigitalHospital);
 
 export default router;
