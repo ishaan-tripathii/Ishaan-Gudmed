@@ -18,7 +18,7 @@ const HospitalOverview = () => {
       try {
         const response = await axios.get(`${config.apiBaseUrl}/api/smartCare`);
         if (response.data.success && response.data.data) {
-          setSmartCareData(response.data.data); // 👈 no [0] here
+          setSmartCareData(response.data.data);
         } else {
           console.log("Data not found");
         }
@@ -29,10 +29,31 @@ const HospitalOverview = () => {
 
     fetchData();
 
+    // Listen for real-time updates
+    socket.on("connect", () => console.log("Socket connected"));
+
+    socket.on("smartCareData_create", (data) => {
+      setSmartCareData(data);
+      console.log("SmartCare data created:", data);
+    });
+
+    socket.on("smartCareData_update", (data) => {
+      setSmartCareData(data);
+      console.log("SmartCare data updated:", data);
+    });
+
+    socket.on("smartCareData_delete", () => {
+      setSmartCareData(null);
+      console.log("SmartCare data deleted");
+    });
+
+    socket.on("connect_error", (err) => console.error("Socket error:", err.message));
+
+    // Cleanup on unmount
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, []); // Empty dependency array since we only want this to run once on mount
 
   return (
     <div>
@@ -42,11 +63,9 @@ const HospitalOverview = () => {
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#2E4168] md:gap-4">
               {smartCareData.title}
             </h2>
-
             <p className="text-sm sm:text-base md:text-lg text-[#2E4168] leading-relaxed font-medium">
               {smartCareData.description1}
             </p>
-
             <p className="text-sm sm:text-base md:text-lg text-[#2E4168] leading-relaxed font-medium">
               {smartCareData.description2}
             </p>

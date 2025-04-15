@@ -92,18 +92,12 @@ const AdminHospitalPage = () => {
     setIsLoading(true);
   
     try {
-      // Split the features string by comma and remove extra spaces
-      // Example: "WiFi, Ambulance" → ["WiFi", "Ambulance"]
-      const featuresArray = formData.features
-        .split(",")           // break at commas
-        .map((f) => f.trim()); // remove extra spaces like " Ambulance" → "Ambulance"
-  
-      // Create an object with the form data
+      // Create an object with the form data directly (no split/map)
       const dataToSend = {
         title: formData.title,
         description: formData.description,
         imageSrc: formData.imageSrc,
-        features: featuresArray, // send the clean array
+        features: formData.features, // send as plain string
       };
   
       console.log("Sending this to server:", dataToSend); // Just to check in console

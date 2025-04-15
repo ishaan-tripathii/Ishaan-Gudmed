@@ -54,6 +54,14 @@ const HospitalPageManager = () => {
         >
           <h2 className="text-xl font-semibold text-blue-600">Smart Care  </h2>
         </NavLink>
+        <NavLink
+          to="/admin/hospital/mrd"
+          className={({ isActive }) =>
+            `p-4 rounded-lg text-center ${isActive ? 'bg-blue-300' : 'bg-blue-100'} hover:bg-blue-200`
+          }
+        >
+          <h2 className="text-xl font-semibold text-blue-600">Mrd  </h2>
+        </NavLink>
         <p>Hi, kaise hai aap?</p> {/* Fixed typo */}
       </nav>
     </div>

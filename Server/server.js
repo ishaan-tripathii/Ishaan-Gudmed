@@ -30,6 +30,9 @@ import hospitalRoutes from "./routes/Hospital/hospitalRoutes.js";
 import icuAutomationRoutes from "./routes/Hospital/IcuAutomationRoutes.js";
 import SmartCareRoutes from "./routes/Hospital/SmartCareRoutes.js"
 import HospitalMrdRoutes from "./routes/Hospital/HospitalMrdRoutes.js"
+// import hospitalRoutes from "./routes/Hospital/hospitalRoutes.js";
+import gudmedHealthcareRoutes from "./routes/Hospital/gudmedhealthcareRoutes.js";
+import gudmedtodayRoutes from "./routes/Hospital/gudmedtodayRoutes.js";
 export const app = express();
 
 const corsOptions = {
@@ -113,6 +116,9 @@ app.use("/api/hospital", hospitalRoutes);
 app.use("/api/icu-automation", icuAutomationRoutes);
 app.use("/api/Smartcare",SmartCareRoutes);
 app.use("/api/mrd",HospitalMrdRoutes);
+app.use("/api/gudmedHealthcare", gudmedHealthcareRoutes);
+app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
+app.use("/api/gudmedtoday", gudmedtodayRoutes);
 
 app.get("/", (req, res) => {
   res.json({

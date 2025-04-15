@@ -1,232 +1,264 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
-import { useSelector } from "react-redux";
 import io from "socket.io-client";
+import { toast, Toaster } from "react-hot-toast";
 import config from "../../config/config";
 
-const AdminSmartCare = () => {
-  const [smartCareSection, setSmartCareSection] = useState(null);
+const AboutusLastSection = () => {
+  const token = localStorage.getItem("token");
+
   const [formData, setFormData] = useState({
     title: "",
     description1: "",
     description2: "",
   });
+
+  const [aboutUsLastSection, setAboutUsLastSection] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { token } = useSelector((state) => state.auth);
 
-  const socket = io(config.apiBaseUrl, { auth: { token } });
-  const configHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const configHeaders = {
+    headers: { Authorization: `Bearer ${token}` },
+  };
 
-  // Fetch SmartCare section data
-  const fetchSmartCareSection = useCallback(async () => {
+  // GET - Fetch content
+  const fetchAboutUsLastSection = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setLoading(true);
       const response = await axios.get(`${config.apiBaseUrl}/api/smartCare`, configHeaders);
-      const data = response.data;
-      setSmartCareSection(data);
-      setFormData({
-        title: data?.title || "",
-        description1: data?.description1 || "",
-        description2: data?.description2 || "",
-      });
+      if (response.data.success) {
+        const data = response.data.data;
+        setAboutUsLastSection(data);
+        setFormData({
+          title: data.title || "",
+          description1: data.description1 || "",
+          description2: data.description2 || "",
+        });
+      } else {
+        setAboutUsLastSection(null);
+        setFormData({ title: "", description1: "", description2: "" });
+      }
     } catch (error) {
-      console.error("Error fetching SmartCare section:", error);
-      toast.error("Failed to fetch SmartCare section");
+      toast.error("Error fetching About Us content.");
+      setAboutUsLastSection(null);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [token]);
 
-  // CRUD operations
-  const createSmartCare = async () => {
+  // POST - Create new
+  const createAboutUs = async () => {
     const response = await axios.post(`${config.apiBaseUrl}/api/smartCare`, formData, configHeaders);
     return response.data;
   };
 
-  const updateSmartCare = async (id) => {
+  // PUT - Update
+  const updateAboutUs = async (id) => {
     const response = await axios.put(`${config.apiBaseUrl}/api/smartCare/${id}`, formData, configHeaders);
     return response.data;
   };
 
-  const deleteSmartCare = async (id) => {
+  // DELETE - Delete
+  const deleteAboutUs = async (id) => {
     const response = await axios.delete(`${config.apiBaseUrl}/api/smartCare/${id}`, configHeaders);
     return response.data;
   };
 
-  // Handle form submission
+  // Submit (create/update)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
-      setLoading(true);
-      if (smartCareSection?._id) {
-        const { success } = await updateSmartCare(smartCareSection._id);
-        if (success) toast.success("SmartCare section updated successfully");
+      let result;
+      if (aboutUsLastSection?._id) {
+        result = await updateAboutUs(aboutUsLastSection._id);
+        if (result.success) {
+          toast.success("Content updated successfully");
+          setIsEditing(false);
+        }
       } else {
-        const { success } = await createSmartCare();
-        if (success) toast.success("SmartCare section created successfully");
+        result = await createAboutUs();
+        if (result.success) {
+          toast.success("Content created successfully");
+        }
       }
-      await fetchSmartCareSection();
-      setIsEditing(false);
+      await fetchAboutUsLastSection();
     } catch (error) {
-      console.error("Error submitting SmartCare section:", error);
-      toast.error("Failed to save SmartCare section");
+      toast.error(`Failed to ${aboutUsLastSection?._id ? "update" : "create"} content`);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Handle delete
+  // Delete
   const handleDelete = async () => {
-    if (!smartCareSection?._id) return;
+    if (!aboutUsLastSection?._id) return;
+    setIsLoading(true);
     try {
-      setLoading(true);
-      const result = await deleteSmartCare(smartCareSection._id);
+      const result = await deleteAboutUs(aboutUsLastSection._id);
       if (result.success) {
-        toast.success("SmartCare section deleted successfully");
-        setSmartCareSection(null);
+        toast.success("Content deleted successfully");
+        setAboutUsLastSection(null);
         setFormData({ title: "", description1: "", description2: "" });
         setIsEditing(false);
       }
     } catch (error) {
-      console.error("Error deleting SmartCare section:", error);
-      toast.error("Failed to delete SmartCare section");
+      toast.error("Failed to delete content");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Socket.IO real-time updates
-  useEffect(() => {
-    fetchSmartCareSection();
-
-    socket.on("smartcare_created", (data) => {
-      setSmartCareSection(data);
-      setFormData({
-        title: data.title,
-        description1: data.description1,
-        description2: data.description2,
-      });
-      toast.info("SmartCare section created in real-time");
-    });
-
-    socket.on("smartcare_updated", (data) => {
-      setSmartCareSection(data);
-      setFormData({
-        title: data.title,
-        description1: data.description1,
-        description2: data.description2,
-      });
-      toast.info("SmartCare section updated in real-time");
-    });
-
-    socket.on("smartcare_deleted", () => {
-      setSmartCareSection(null);
-      setFormData({ title: "", description1: "", description2: "" });
-      toast.info("SmartCare section deleted in real-time");
-    });
-
-    return () => {
-      socket.off("smartcare_created");
-      socket.off("smartcare_updated");
-      socket.off("smartcare_deleted");
-    };
-  }, [fetchSmartCareSection]);
-
-  // Handle form input changes
-  const handleChange = (e) => {
+  // Handle form input change
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  useEffect(() => {
+    const socket = io(config.socketBaseUrl, {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    fetchAboutUsLastSection();
+
+    socket.on("connect", () => console.log("Socket connected"));
+
+    socket.on("smartcare_created", (data) => {
+      setAboutUsLastSection(data);
+      setFormData(data);
+      toast.success("SmartCare section created in real-time!");
+    });
+
+    socket.on("smartcare_updated", (data) => {
+      setAboutUsLastSection(data);
+      setFormData(data);
+      toast.success("SmartCare section updated in real-time!");
+    });
+
+    socket.on("smartcare_deleted", () => {
+      setAboutUsLastSection(null);
+      setFormData({ title: "", description1: "", description2: "" });
+      toast.success("SmartCare section deleted in real-time!");
+    });
+
+    socket.on("connect_error", (err) => console.error("Socket error:", err.message));
+
+    return () => socket.disconnect();
+  }, [fetchAboutUsLastSection]);
+
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        {isEditing || !smartCareSection ? "Manage SmartCare Section" : "SmartCare Section"}
-      </h2>
-
-      {loading && <p>Loading...</p>}
-
-      {smartCareSection && !isEditing && (
-        <div className="mt-6">
-          <p><strong>Title:</strong> {smartCareSection.title}</p>
-          <p><strong>Description 1:</strong> {smartCareSection.description1}</p>
-          <p><strong>Description 2:</strong> {smartCareSection.description2}</p>
-          <div className="mt-4">
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
-            >
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className="bg-red-500 text-white px-4 py-2 rounded"
-              disabled={loading}
-            >
-              Delete
-            </button>
-          </div>
+    <div className="p-6 max-w-4xl mx-auto">
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900" />
         </div>
-      )}
+      ) : (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">
+            {isEditing || !aboutUsLastSection ? "Manage About Us Section" : "About Us Section"}
+          </h2>
 
-      {(isEditing || !smartCareSection) && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700">Title</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="text"
               name="title"
               value={formData.title}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              onChange={handleInputChange}
+              placeholder="Enter title"
+              className="w-full border rounded p-2"
+              disabled={isLoading}
             />
-          </div>
-          <div>
-            <label className="block text-gray-700">Description 1</label>
             <textarea
               name="description1"
               value={formData.description1}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              onChange={handleInputChange}
+              placeholder="Enter Description 1"
+              rows="3"
+              className="w-full border rounded p-2"
+              disabled={isLoading}
             />
-          </div>
-          <div>
-            <label className="block text-gray-700">Description 2</label>
             <textarea
               name="description2"
               value={formData.description2}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              onChange={handleInputChange}
+              placeholder="Enter Description 2"
+              rows="3"
+              className="w-full border rounded p-2"
+              disabled={isLoading}
             />
-          </div>
-          <div className="flex space-x-4">
-            <button
-              type="submit"
-              className="bg-green-500 text-white px-4 py-2 rounded"
-              disabled={loading}
-            >
-              {smartCareSection?._id ? "Update" : "Create"}
-            </button>
-            {smartCareSection && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
+
+            {/* ✅ Fixed Button Logic */}
+            <div className="flex gap-4">
+              {/* Show Create button if there's no existing section */}
+              {!aboutUsLastSection && (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Create
+                </button>
+              )}
+
+              {/* Show Update & Delete buttons when editing */}
+              {aboutUsLastSection && isEditing && (
+                <>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Update
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+
+              {/* Show Edit & Delete buttons when not editing */}
+              {aboutUsLastSection && !isEditing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                    disabled={isLoading}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
+          </form>
+
+          {aboutUsLastSection && !isEditing && (
+            <div className="mt-6">
+              <p><strong>Title:</strong> {aboutUsLastSection.title}</p>
+              <p><strong>Description 1:</strong> {aboutUsLastSection.description1}</p>
+              <p><strong>Description 2:</strong> {aboutUsLastSection.description2}</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 };
 
-export default AdminSmartCare;
+export default AboutusLastSection;

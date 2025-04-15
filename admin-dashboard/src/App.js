@@ -24,6 +24,7 @@ import HospitalPageManager from "./pages/Hospital/HospitalPageManager.js";
 import AdminHospitalPage from "./pages/Hospital/AdminHospitalPage.js";
 import AdminICUAutomationPage from "./pages/Hospital/AdminICUAutomationPage.js";
 import AdminSmartCarePage from "./pages/Hospital/AdminSmartCarePage.js";
+import AdminMedPage from "./pages/Hospital/AdminMedPage.js";
 // Loading Component
 const Loading = () => <div className="flex items-center justify-center h-screen">Loading...</div>;
 
@@ -217,6 +218,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <AdminSmartCarePage />
+            </ProtectedRoute>
+          }
+        />
+         <Route
+          path="/admin/hospital/mrd"
+          element={
+            <ProtectedRoute>
+             <AdminMedPage></AdminMedPage>
             </ProtectedRoute>
           }
         />
