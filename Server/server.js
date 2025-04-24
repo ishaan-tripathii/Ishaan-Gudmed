@@ -30,9 +30,14 @@ import hospitalRoutes from "./routes/Hospital/hospitalRoutes.js";
 import icuAutomationRoutes from "./routes/Hospital/IcuAutomationRoutes.js";
 import SmartCareRoutes from "./routes/Hospital/SmartCareRoutes.js"
 import HospitalMrdRoutes from "./routes/Hospital/HospitalMrdRoutes.js"
+import doctorRoutes from "./routes/doctorRoutes.js";
+import ipdRoutes from "./routes/ipdRoutes.js";
+import opdstepRoutes from "./routes/opdstepRoutes.js";
+import opdRoutes from "./routes/opdRoutes.js";
 // import hospitalRoutes from "./routes/Hospital/hospitalRoutes.js";
 import gudmedHealthcareRoutes from "./routes/Hospital/gudmedhealthcareRoutes.js";
-import gudmedtodayRoutes from "./routes/Hospital/gudmedtodayRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
+
 export const app = express();
 
 const corsOptions = {
@@ -109,7 +114,7 @@ app.use("/api/aboutus", AboutUs);
 app.use("/api/ourachievements", ourachievements);
 app.use("/api/thirdsection", ThirdSection);
  app.use("/api/services", ourservicesRoutes);
-app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
+app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes); //not working
 app.use("/api/patients", patientRoutes);
 app.use("/api/smartCamera", smartCameraRoutes);
 app.use("/api/hospital", hospitalRoutes);
@@ -117,8 +122,13 @@ app.use("/api/icu-automation", icuAutomationRoutes);
 app.use("/api/Smartcare",SmartCareRoutes);
 app.use("/api/mrd",HospitalMrdRoutes);
 app.use("/api/gudmedHealthcare", gudmedHealthcareRoutes);
-app.use("/api/gudmedSmartHospital", gudmedSmartHospitalRoutes);
-app.use("/api/gudmedtoday", gudmedtodayRoutes);
+//app.use("/api/gudmedtoday", gudmedtodayRoutes); //not working
+app.use("/api/doctor", doctorRoutes); 
+app.use("/api/ipd", ipdRoutes); //not working 
+app.use("/api/opdstep", opdstepRoutes);
+app.use("/api/opd", opdRoutes); 
+app.use("/api/team", teamRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({
