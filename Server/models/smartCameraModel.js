@@ -14,7 +14,7 @@ const cardSchema = new mongoose.Schema({
 
 // Camera Benefit Schema (Stores one heading and multiple cards)
 const cameraBenefitSchema = new mongoose.Schema({
-  heading: { type: String, required: true }, // Single heading
+  heading: { type: String, required: true }, 
   cards: [cardSchema], // Array of cards
 });
 
